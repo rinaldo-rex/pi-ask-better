@@ -1,6 +1,6 @@
-# pi-ask configuration
+# pi-ask-better configuration
 
-This file is the source of truth for configuring `@eko24ive/pi-ask`.
+This file is the source of truth for configuring `pi-ask-better`. The fork retains the upstream `@eko24ive/pi-ask` config paths and keymaps for compatibility.
 
 When changing pi-ask settings:
 

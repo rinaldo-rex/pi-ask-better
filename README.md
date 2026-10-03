@@ -1,15 +1,15 @@
 ![pi-ask main image](docs/media/pi-ask-main.png)
 
-# @eko24ive/pi-ask
+# pi-ask-better
 
-[![npm downloads](https://badgen.net/npm/dm/@eko24ive/pi-ask)](https://www.npmjs.com/package/@eko24ive/pi-ask)
-[![last commit](https://badgen.net/github/last-commit/eko24ive/pi-ask?v=4b6c81e)](https://github.com/eko24ive/pi-ask/commits/main)
-[![stars](https://badgen.net/github/stars/eko24ive/pi-ask)](https://github.com/eko24ive/pi-ask/stargazers)
+[![npm downloads](https://badgen.net/npm/dm/pi-ask-better)](https://www.npmjs.com/package/pi-ask-better)
+[![last commit](https://badgen.net/github/last-commit/rinaldo-rex/pi-ask-better?v=be242d7)](https://github.com/rinaldo-rex/pi-ask-better/commits/main)
+[![stars](https://badgen.net/github/stars/rinaldo-rex/pi-ask-better)](https://github.com/rinaldo-rex/pi-ask-better/stargazers)
 
 > [!IMPORTANT]
 > Contributions are welcome in chill mode: please open an issue and link your fork or branch instead of expecting rapid pull-request reviews.
 
-`@eko24ive/pi-ask` is an ask tool that cares about your answers.
+`pi-ask-better` is a personal-preference fork of [`@eko24ive/pi-ask`](https://github.com/eko24ive/pi-ask), an ask tool that cares about your answers. Credit for the original extension belongs to its upstream authors.
 
 It lets an agent pause, ask structured questions in a terminal UI, and continue with normalized answers instead of guessing.
 
@@ -27,21 +27,59 @@ I value contributions and will do my best to credit the people who help, whether
 
 ## Install
 
-```bash
-pi install npm:@eko24ive/pi-ask
-```
+### Project-local install (recommended for testing)
 
-You can also install from git:
+Run from the project where you want to use the fork:
 
 ```bash
-pi install git:github.com/eko24ive/pi-ask
+pi install --local git:github.com/rinaldo-rex/pi-ask-better
 ```
 
-Or try it without installing (load once for the current run):
+The declaration goes into `.pi/settings.json` and the checkout into `.pi/git/`. Nothing is installed globally. Grant project trust when prompted, then run `/reload` or restart pi.
+
+To replace a globally installed upstream pi-ask **only in this project**, add this package override alongside the fork entry in `.pi/settings.json`:
+
+```json
+{
+  "packages": [
+    {
+      "source": "npm:@eko24ive/pi-ask",
+      "autoload": false,
+      "extensions": ["-src/index.ts"],
+      "skills": ["-skills/ask-user/SKILL.md"]
+    },
+    "git:github.com/rinaldo-rex/pi-ask-better"
+  ]
+}
+```
+
+Preserve any other existing settings and package entries. This disables the original extension and skill here without uninstalling them globally. To keep this setup private, exclude `.pi/` in your checkout's `.git/info/exclude`.
+
+### npm
+
+Once `pi-ask-better` is published to npm, the equivalent project-local command is:
 
 ```bash
-pi -e npm:@eko24ive/pi-ask
+pi install --local npm:pi-ask-better
 ```
+
+Choose one fork source (Git or npm), not both, to avoid duplicate tool registrations.
+
+### Other scopes
+
+To install the fork globally, omit `--local`:
+
+```bash
+pi install git:github.com/rinaldo-rex/pi-ask-better
+```
+
+Or try it once without persisting an installation:
+
+```bash
+pi -e git:github.com/rinaldo-rex/pi-ask-better
+```
+
+The fork retains upstream config paths and remote-event names for compatibility; those identifiers do not mean the upstream extension is loaded. Automatic publishing is disabled in this fork until a fork-specific release setup is explicitly enabled.
 
 ## Features
 
