@@ -17,7 +17,8 @@ permissions:
 
 jobs:
   release:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    # Fork publishing stays disabled until its release targets are configured.
+    if: ${{ false }}
     runs-on: ubuntu-latest
 
     steps:
