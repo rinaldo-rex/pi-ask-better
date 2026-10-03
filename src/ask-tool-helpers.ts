@@ -24,6 +24,7 @@ export const ASK_TOOL_PROMPT_GUIDELINES = [
 	"When calling `ask_user`, mark grounded preferences with `recommended: true` and use the option `description` to state the reason.",
 	"When calling `ask_user`, choose question `type` from the question semantics: `single` means one answer is expected, `multi` means multiple answers could reasonably be selected, and `preview` means options need preview-pane detail.",
 	'When calling `ask_user`, use `type: "preview"` only when every option includes non-empty `preview` text. Option descriptions do not satisfy this requirement.',
+	"When an ask_user result contains laymanExplanation, explain every option and its differences in everyday language first. Use concrete inline examples in follow-up option descriptions or previews. Re-ask only requested questions if still needed and preserve other committed answers.",
 	"After an `ask_user` elaboration or follow-up note, prefer another structured `ask_user` follow-up if a choice is still needed instead of switching to plain-text multiple choice in chat.",
 	"When prior `ask_user` answers narrow the branch, bundle the next 2-3 related unresolved decisions into one follow-up `ask_user` call when possible.",
 	"Use one-at-a-time `ask_user` follow-up calls only when the next question materially depends on the previous answer.",

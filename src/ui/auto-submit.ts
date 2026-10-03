@@ -25,7 +25,12 @@ export function shouldAutoSubmit(state: AskState, config: AskConfig): boolean {
 		return false;
 	}
 	for (const question of state.questions) {
-		if (!isQuestionAnswered(state, question.id)) {
+		if (
+			!(
+				state.answers[question.id]?.laymanRequested ||
+				isQuestionAnswered(state, question.id)
+			)
+		) {
 			return false;
 		}
 		if (hasAnswerNotes(state.answers[question.id])) {

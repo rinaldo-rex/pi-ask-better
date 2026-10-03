@@ -51,6 +51,7 @@ export interface AskSelectedOption {
 export interface AskStateAnswer {
 	customSelected?: boolean;
 	customText?: string;
+	laymanRequested?: boolean;
 	note?: string;
 	optionNotes?: Record<string, string>;
 	selected: AskSelectedOption[];
@@ -121,12 +122,24 @@ export interface AskContinuationPayload {
 	strategy: "refine_only" | "resume";
 }
 
+export interface AskLaymanExplanationQuestion
+	extends AskElaborationQuestionContext {
+	note?: string;
+	optionNotes?: Record<string, string>;
+}
+
+export interface AskLaymanExplanationPayload {
+	instruction: string;
+	questions: AskLaymanExplanationQuestion[];
+}
+
 export interface AskResult {
 	answers: Record<string, AskResultAnswer>;
 	cancelled: boolean;
 	continuation?: AskContinuationPayload;
 	elaboration?: AskElaborationPayload;
 	error?: AskValidationError;
+	laymanExplanation?: AskLaymanExplanationPayload;
 	mode: "submit" | "elaborate";
 	questions: AskQuestionSummary[];
 	title?: string;
@@ -164,6 +177,7 @@ export type AskAction =
 	| { type: "OPEN_OPTION_NOTE"; questionId: string; optionValue: string }
 	| { type: "CONFIRM" }
 	| { type: "TOGGLE_MULTI" }
+	| { type: "TOGGLE_LAYMAN_REQUEST" }
 	| { type: "NUMBER_SHORTCUT"; digit: number }
 	| { type: "SAVE_INPUT"; value: string; submit?: boolean }
 	| { type: "SAVE_NOTE"; value: string }

@@ -17,6 +17,7 @@ export function emptyAnswer(): AskStateAnswer {
 export function cloneAnswer(answer: AskStateAnswer): AskStateAnswer {
 	return {
 		selected: answer.selected.map(cloneSelection),
+		laymanRequested: answer.laymanRequested,
 		customSelected: answer.customSelected,
 		customText: answer.customText,
 		note: answer.note,
@@ -138,6 +139,7 @@ export function saveOptionNote(
 
 export function isAnswerEmpty(answer: AskStateAnswer): boolean {
 	return (
+		!answer.laymanRequested &&
 		answer.selected.length === 0 &&
 		!answer.customText &&
 		!answer.note &&
@@ -146,7 +148,7 @@ export function isAnswerEmpty(answer: AskStateAnswer): boolean {
 }
 
 export function isAnswerAnswered(answer?: AskStateAnswer): boolean {
-	if (!answer) {
+	if (!answer || answer.laymanRequested) {
 		return false;
 	}
 	return (

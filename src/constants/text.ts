@@ -2,6 +2,10 @@ export const OTHER_OPTION_VALUE = "__other__";
 export const OTHER_OPTION_LABEL = "Type your own";
 export const SUBMIT_CHOICES = ["Submit", "Elaborate", "Cancel"] as const;
 export const NO_PREVIEW_TEXT = "No preview available";
+export const LAYMAN_REQUEST_NOTICE =
+	"Layman explanation requested for this question";
+export const LAYMAN_EXPLANATION_INSTRUCTION =
+	"Explain every option and the differences between options for the requested questions in everyday language without unnecessary jargon. Use concrete inline examples in follow-up ask_user option descriptions or previews wherever applicable. First explain directly, then re-ask only these questions if a choice is still needed. If Elaborate was also selected, handle its separately noted clarification requests too. Preserve answers to other questions and do not ask them again. Previously saved choices for requested questions are not committed answers.";
 export const ELABORATION_INSTRUCTION =
 	"First answer the user's noted clarification directly and concisely using the provided question and option context. Do not treat these notes as final answers. Then re-ask only the affected questions if a choice is still needed afterward. Do not jump straight to a follow-up question unless the note is already resolved.";
 export const CANCELLED_SUMMARY = "User cancelled the ask flow";

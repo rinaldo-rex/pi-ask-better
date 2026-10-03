@@ -18,6 +18,7 @@ export type AskInputCommand =
 	| { kind: "confirm" }
 	| { kind: "cancel" }
 	| { kind: "changeQuestionType" }
+	| { kind: "requestLaymanExplanation" }
 	| { kind: "dismiss" }
 	| { kind: "showSettings" }
 	| { kind: "numberShortcut"; digit: number }
@@ -136,6 +137,9 @@ function getNavigationInputCommand(
 	}
 	if (matchesBinding(data, bindings.toggle)) {
 		return { kind: "toggleMulti" };
+	}
+	if (matchesBinding(data, bindings.requestLaymanExplanation)) {
+		return { kind: "requestLaymanExplanation" };
 	}
 	if (matchesBinding(data, bindings.changeQuestionType)) {
 		return { kind: "changeQuestionType" };

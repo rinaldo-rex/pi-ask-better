@@ -1,8 +1,10 @@
 import {
+	stripTerminalSequences,
 	truncateToWidth,
 	visibleWidth,
 	wrapTextWithAnsi,
 } from "@earendil-works/pi-tui";
+import { LAYMAN_REQUEST_NOTICE } from "../constants/text.ts";
 import { UI_DIMENSIONS, UI_TEXT } from "../constants/ui.ts";
 import {
 	measurePreviewLeftWidth,
@@ -26,14 +28,34 @@ export function renderQuestionScreen(context: QuestionRenderContext) {
 	pushWrappedText(lines, question.prompt, width, theme, "text", " ", " ");
 	renderQuestionNote(lines, model.questionNote, context);
 
-	if (model.mode === "preview") {
-		renderPreviewQuestion(context, model);
-		return;
+	const requested = context.state.answers[question.id]?.laymanRequested;
+	if (requested) {
+		pushWrappedText(
+			lines,
+			LAYMAN_REQUEST_NOTICE,
+			width,
+			theme,
+			"warning",
+			" ",
+			" "
+		);
+		lines.push("");
 	}
 
-	for (const row of model.rows) {
-		renderStandardOption(lines, row, context);
+	const choiceLines: string[] = [];
+	const choiceContext = { ...context, lines: choiceLines };
+	if (model.mode === "preview") {
+		renderPreviewQuestion(choiceContext, model);
+	} else {
+		for (const row of model.rows) {
+			renderStandardOption(choiceLines, row, choiceContext);
+		}
 	}
+	lines.push(
+		...choiceLines.map((line) =>
+			requested ? theme.fg("dim", stripTerminalSequences(line)) : line
+		)
+	);
 }
 
 function renderQuestionNote(

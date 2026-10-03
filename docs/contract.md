@@ -78,6 +78,25 @@ This document defines the stable external behavior. It does not explain internal
         optionNotes?: Record<string, string>;
       }
     >;
+    laymanExplanation?: {
+      instruction: string;
+      questions: Array<{
+        id: string;
+        label: string;
+        prompt: string;
+        type: "single" | "multi" | "preview";
+        presentedType?: "single" | "multi" | "preview";
+        options: Array<{
+          value: string;
+          label: string;
+          description?: string;
+          preview?: string;
+          recommended?: boolean;
+        }>;
+        note?: string;
+        optionNotes?: Record<string, string>;
+      }>;
+    };
     continuation?: {
       strategy: "refine_only" | "resume";
       affectedQuestionIds: string[];
@@ -177,6 +196,10 @@ This document defines the stable external behavior. It does not explain internal
 - `continuation.preservedAnswers` contains previously committed answers that should be kept as context and not re-asked
 - `continuation.affectedQuestionIds` lists the only questions that should be revisited
 - `continuation.questionStates` marks each question as `answered`, `needs_clarification`, or `unanswered`
+- non-cancelled results with flagged questions include `laymanExplanation` in either submit or elaborate mode, with full question/option context, user notes, and plain-language/example instructions
+- flagged questions are omitted from `answers` and from committed elaboration answers; their privately saved choices/custom text are never sent as answers
+- results with flags include `continuation` even in submit mode: flagged questions are `needs_clarification`, other committed answers are preserved, and unresponded questions remain `unanswered`
+- model-visible result text includes other answers, the requested questions/options/notes, and instructions to explain in everyday language first, then re-ask only flagged questions if needed; cancellation sends no explanation request
 - single-select answers still use arrays
 - recommendation markers never change canonical submitted labels or values
 - when `behaviour.presentSingleAsMulti` is enabled, requested single-select questions are presented and handled as multi-select in future/replayed ask flows; result question metadata keeps the requested `type`, adds `presentedType` when final presentation differs, and result text uses one compact note when any answered questions were presented differently
@@ -208,6 +231,9 @@ This document defines the stable external behavior. It does not explain internal
 - single-select, multi-select, and preview questions
 - optional warning-colored recommendation subtitles in standard and preview option lists without automatic selection
 - active question type changes via configurable `main.changeQuestionType` hotkey, default `t`; non-preview questions toggle `single <-> multi`; preview questions toggle `preview <-> multi`
+- per-question layman explanation requests via configurable `main.requestLaymanExplanation` (default `l`), with dimmed/locked choices, a visible request message, and review/tab indicators
+- pressing the shortcut again removes the request and restores the privately saved selection/custom answer; other questions and their answers are unaffected
+- flags count as responses for configured auto-submit, but do not bypass the existing review-tab and no-notes requirements
 - inline free-form answers for all question types
 - native pi-style `@` file path autocomplete inside free-form answer and note editors
 - question notes via `Shift+N`
@@ -225,6 +251,7 @@ This document defines the stable external behavior. It does not explain internal
 - ask settings list with binary behaviour/notification toggles and a guarded reset-to-defaults action
 - `?` in the ask flow and `/ask-settings` in pi open the same lightweight ask settings overlay
 - settings attempt to persist immediately when changed: `Auto-submit when answered without notes`, `Confirm dismiss when dirty`, `Double-press review shortcuts`, `Notifications`, and `Show footer hints`; `Present single-select as multi-select` persists immediately when saving succeeds but applies only to new/replayed ask flows; save failures revert the setting and show a manual-edit message; resetting config to defaults requires pressing the reset action twice within a short confirmation window
+- the additive schema-version-5 `main.requestLaymanExplanation` keymap defaults in memory to `l` when absent, or to an unbound action if an existing main/global binding already owns `l`; existing bindings are preserved and `[]` can explicitly disable this new shortcut
 - `Keymaps` is a persisted, context-aware config section for global, main-flow, editor, note-editor, and settings-modal actions
 - the settings list shows the absolute config file path for customizing keymaps, notifications, and extraction settings
 - if the flow is already on the review tab, all questions are answered, and no notes exist, enabling auto-submit can complete the current ask flow immediately
@@ -240,6 +267,7 @@ Main flow:
 - `main.nextOption` / `main.previousOption` move between options or review actions; defaults: `Down`, `Up`
 - `main.confirm`, `main.cancel`, and `main.toggle` confirm, cancel, or toggle; defaults: `Enter`, `Esc`, `Space`
 - `main.changeQuestionType` changes the active question type (non-preview: `single <-> multi`; preview: `preview <-> multi`); default: `t`; destructive `multi -> single` changes require pressing the type hotkey again, with no timeout, and the pending confirmation clears on other navigation/actions
+- `main.requestLaymanExplanation` toggles an explanation request for the active question; default: `l`; saved choices remain private while flagged, and selecting/toggling options, opening custom input, moving between options, and changing question type are disabled; `Enter` continues to the next tab and normal tab navigation/notes/settings remain available; the action has no effect on Review
 - `main.optionNote` and `main.questionNote` open option/question notes; defaults: `n`, `Shift+N`
 - `1..9` is fixed and selects or toggles the matching option; on the review tab, `1`, `2`, and `3` trigger `Submit`, `Elaborate`, and `Cancel`
 - when `Double-press review shortcuts` is enabled, review-tab `1`, `2`, and `3` require the same key twice without a timeout, and the review screen shows an inline hint for the pending action

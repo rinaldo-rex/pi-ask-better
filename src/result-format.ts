@@ -1,6 +1,6 @@
 import { ELABORATED_SUMMARY } from "./constants/text.ts";
 import { isCustomOnlyAnswer } from "./state/answers.ts";
-import type { AskResult } from "./types.ts";
+import type { AskOption, AskResult } from "./types.ts";
 
 export function formatResultLines(
 	result: AskResult,
@@ -10,7 +10,13 @@ export function formatResultLines(
 
 	let hasPresentationOverride = false;
 
+	const requestedIds = new Set(
+		result.laymanExplanation?.questions.map((question) => question.id)
+	);
 	for (const question of result.questions) {
+		if (requestedIds.has(question.id)) {
+			continue;
+		}
 		const answer = result.answers[question.id];
 		if (!answer) {
 			lines.push(formatUnansweredLine(question.label, options.mode));
@@ -42,6 +48,43 @@ export function formatResultLines(
 		lines.push(formatPresentationNoteLine(options.mode));
 	}
 
+	lines.push(...formatLaymanExplanationLines(result));
+	return lines;
+}
+
+function formatLaymanExplanationLines(result: AskResult): string[] {
+	const request = result.laymanExplanation;
+	if (!request) {
+		return [];
+	}
+	const lines = request.questions.flatMap((question) => {
+		const context = [
+			`User requested a layman explanation for question ${quote(question.prompt)} (id: ${quote(question.id)}).`,
+		];
+		for (const option of question.options) {
+			context.push(
+				...formatLaymanOption(option, question.optionNotes?.[option.value])
+			);
+		}
+		if (question.note) {
+			context.push(`  User note: ${question.note}`);
+		}
+		return context;
+	});
+	lines.push(request.instruction);
+	return lines;
+}
+
+function formatLaymanOption(option: AskOption, note?: string): string[] {
+	const lines = [
+		`  Option ${quote(option.label)} [${option.value}]${option.description ? `: ${option.description}` : ""}`,
+	];
+	if (option.preview) {
+		lines.push(`    Preview: ${option.preview}`);
+	}
+	if (note) {
+		lines.push(`    User note: ${note}`);
+	}
 	return lines;
 }
 
@@ -100,7 +143,7 @@ function formatQuestionNoteLine(
 
 export function formatElaborationLines(
 	result: AskResult,
-	_options: { mode: "summary" | "render" }
+	options: { mode: "summary" | "render" }
 ): string[] {
 	const items = result.elaboration?.items ?? [];
 	const lines = items.map((item) => {
@@ -114,6 +157,9 @@ export function formatElaborationLines(
 		return `User asked to elaborate on question ${quote(item.question.prompt)} option ${quote(item.option.label)}${answerContext} with note ${quote(item.note)}`;
 	});
 
+	if (result.laymanExplanation) {
+		return [...formatResultLines(result, options), ...lines];
+	}
 	if (lines.length > 0) {
 		return lines;
 	}

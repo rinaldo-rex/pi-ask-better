@@ -38,6 +38,7 @@ import {
 	moveOption,
 	moveTab,
 	toggleCurrentMultiOption,
+	toggleLaymanRequest,
 } from "../state/transitions.ts";
 import { isEditingView } from "../state/view.ts";
 import type { AskParams, AskResult, AskState } from "../types.ts";
@@ -281,7 +282,9 @@ function handleNavigationCommand(
 		case "moveTab":
 			clearReviewShortcutPending(controller);
 			clearQuestionTypeChangePending(controller);
-			commitState(controller, moveTab(controller.state, command.delta));
+			commitState(controller, moveTab(controller.state, command.delta), {
+				finish: true,
+			});
 			return;
 		case "moveOption":
 			clearReviewShortcutPending(controller);
@@ -292,6 +295,9 @@ function handleNavigationCommand(
 			clearReviewShortcutPending(controller);
 			clearQuestionTypeChangePending(controller);
 			handleToggleCurrentOption(controller);
+			return;
+		case "requestLaymanExplanation":
+			handleLaymanRequest(controller);
 			return;
 		case "changeQuestionType":
 			clearReviewShortcutPending(controller);
@@ -325,7 +331,8 @@ function handleNavigationCommand(
 			clearQuestionTypeChangePending(controller);
 			commitState(
 				controller,
-				applyNumberShortcut(controller.state, command.digit)
+				applyNumberShortcut(controller.state, command.digit),
+				{ finish: true }
 			);
 			return;
 		case "dismiss":
@@ -346,6 +353,14 @@ function handleNavigationCommand(
 		default:
 			return;
 	}
+}
+
+function handleLaymanRequest(controller: AskFlowController) {
+	clearReviewShortcutPending(controller);
+	clearQuestionTypeChangePending(controller);
+	commitState(controller, toggleLaymanRequest(controller.state), {
+		finish: true,
+	});
 }
 
 function handleToggleCurrentOption(controller: AskFlowController) {

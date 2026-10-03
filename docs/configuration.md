@@ -54,6 +54,7 @@ Unsupported future versions or invalid files are left unchanged and defaults are
       "cancel": ["esc"],
       "toggle": ["space"],
       "changeQuestionType": ["t"],
+      "requestLaymanExplanation": ["l"],
       "nextTab": ["tab", "right"],
       "previousTab": ["shift+tab", "left"],
       "nextOption": ["down"],
@@ -125,7 +126,7 @@ pi auth check --provider openai-codex --model gpt-5.4-mini
 
 - type: boolean
 - default: `false`
-- effect: when enabled, a fully answered ask flow with no notes can auto-submit from the review tab
+- effect: when enabled, a fully responded ask flow with no notes can auto-submit from the review tab; a layman explanation request counts as a response, even without a selected choice
 
 ### `behaviour.confirmDismissWhenDirty`
 
@@ -221,6 +222,7 @@ Arrays are aliases: any listed key triggers the same action.
     "confirm": ["enter"],
     "cancel": ["esc"],
     "changeQuestionType": ["t"],
+    "requestLaymanExplanation": ["l"],
     "toggle": ["space"],
     "nextTab": ["tab", "right"],
     "previousTab": ["shift+tab", "left"],
@@ -253,6 +255,12 @@ Arrays are aliases: any listed key triggers the same action.
   }
 }
 ```
+
+### Layman explanation shortcut
+
+`keymaps.main.requestLaymanExplanation` defaults to `["l"]`. It toggles a plain-language explanation request on the active question, preserving its choices privately until the flag is removed. Flagged choices dim and are locked; `Enter` continues without selecting. The shortcut does not intercept typing in answer/note editors and has no effect on Review. Requests reach the agent only with batch submission (including auto-submit when enabled).
+
+This is an additive schema-version-5 field: old configs gain `l` in memory without disk changes. If an existing main/global action already owns `l`, its binding is preserved and the new action is left unbound; assign a free key manually. Only this new action accepts `[]` to disable its shortcut explicitly. Explicit conflicting bindings still use the normal invalid-keymap fallback.
 
 ### Contexts
 
@@ -317,7 +325,7 @@ If configured keymaps are invalid:
 
 Invalid keymaps include:
 
-- missing one of the required contexts or actions
+- missing one of the required contexts or actions (except the additive `main.requestLaymanExplanation` action)
 - unsupported key syntax
 - duplicate bindings within one context
 - duplicate bindings between `global` and `main`, `editor`, or `noteEditor`
@@ -352,6 +360,7 @@ Invalid keymaps include:
       "cancel": ["q"],
       "toggle": ["ctrl+t"],
       "changeQuestionType": ["t"],
+      "requestLaymanExplanation": ["l"],
       "nextTab": ["tab", "right"],
       "previousTab": ["shift+tab", "left"],
       "nextOption": ["down"],

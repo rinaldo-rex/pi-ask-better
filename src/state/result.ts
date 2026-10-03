@@ -2,12 +2,14 @@ import {
 	CANCELLED_SUMMARY,
 	ELABORATED_SUMMARY,
 	ELABORATION_INSTRUCTION,
+	LAYMAN_EXPLANATION_INSTRUCTION,
 	SUBMITTED_SUMMARY,
 } from "../constants/text.ts";
 import { formatElaborationLines, formatResultLines } from "../result-format.ts";
 import type {
 	AskContinuationPayload,
 	AskElaborationPayload,
+	AskLaymanExplanationPayload,
 	AskResult,
 	AskResultAnswer,
 	AskState,
@@ -36,6 +38,7 @@ export type ReviewAnswer = AskResult["answers"][string] & {
 export function toAskResult(state: AskState): AskResult {
 	const answers = Object.fromEntries(
 		Object.entries(state.answers)
+			.filter(([, answer]) => !answer.laymanRequested)
 			.map(
 				([questionId, answer]) => [questionId, serializeAnswer(answer)] as const
 			)
@@ -46,7 +49,11 @@ export function toAskResult(state: AskState): AskResult {
 			)
 	);
 
+	const laymanExplanation = state.cancelled
+		? undefined
+		: serializeLaymanExplanation(state);
 	return {
+		...(laymanExplanation ? { laymanExplanation } : {}),
 		title: state.title,
 		cancelled: state.cancelled,
 		mode: state.mode,
@@ -62,7 +69,7 @@ export function toAskResult(state: AskState): AskResult {
 		})),
 		answers,
 		continuation:
-			state.mode === "elaborate"
+			!state.cancelled && (state.mode === "elaborate" || laymanExplanation)
 				? serializeContinuation(state, answers)
 				: undefined,
 		elaboration:
@@ -98,7 +105,9 @@ function serializeContinuation(
 
 	for (const question of state.questions) {
 		const answer = state.answers[question.id];
-		const hasClarificationNeed = hasAnswerNotes(answer);
+		const hasClarificationNeed =
+			answer?.laymanRequested ||
+			(state.mode === "elaborate" && hasAnswerNotes(answer));
 		const committedAnswer = answers[question.id];
 		const answered = !!committedAnswer;
 
@@ -108,7 +117,7 @@ function serializeContinuation(
 			continue;
 		}
 
-		if (answered) {
+		if (answered && isResultAnswerCommitted(committedAnswer)) {
 			preservedAnswers[question.id] = cloneResultAnswer(committedAnswer);
 			questionStates[question.id] = { status: "answered" };
 			continue;
@@ -123,6 +132,26 @@ function serializeContinuation(
 		questionStates,
 		strategy: "refine_only",
 	};
+}
+
+function serializeLaymanExplanation(
+	state: AskState
+): AskLaymanExplanationPayload | undefined {
+	const questions = state.questions
+		.filter((question) => state.answers[question.id]?.laymanRequested)
+		.map((question) => {
+			const answer = state.answers[question.id];
+			return {
+				...createElaborationQuestionContext(question),
+				...(answer.note ? { note: answer.note } : {}),
+				...(answer.optionNotes
+					? { optionNotes: { ...answer.optionNotes } }
+					: {}),
+			};
+		});
+	return questions.length
+		? { instruction: LAYMAN_EXPLANATION_INSTRUCTION, questions }
+		: undefined;
 }
 
 function serializeElaboration(state: AskState): AskElaborationPayload {
@@ -141,7 +170,7 @@ function serializeElaborationItemsForQuestion(
 	question: AskState["questions"][number],
 	answer: AskStateAnswer | undefined
 ): AskElaborationPayload["items"] {
-	if (!(answer && hasAnswerNotes(answer))) {
+	if (!(answer && hasAnswerNotes(answer)) || answer.laymanRequested) {
 		return [];
 	}
 

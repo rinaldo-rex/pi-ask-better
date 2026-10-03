@@ -1,4 +1,5 @@
 import { truncateToWidth } from "@earendil-works/pi-tui";
+import { LAYMAN_REQUEST_NOTICE } from "../constants/text.ts";
 import { UI_TEXT } from "../constants/ui.ts";
 import type { AskState } from "../types.ts";
 import {
@@ -71,6 +72,18 @@ function renderReviewQuestion(
 	width: number
 ) {
 	pushWrappedText(lines, question.label, width, theme, "text", " ", " ");
+	if (question.laymanRequested) {
+		pushWrappedText(
+			lines,
+			LAYMAN_REQUEST_NOTICE,
+			width,
+			theme,
+			"warning",
+			"   ",
+			"   "
+		);
+		return;
+	}
 	if (question.unanswered) {
 		lines.push(
 			truncateToWidth(`   ${theme.fg("dim", UI_TEXT.unanswered)}`, width)
