@@ -1,16 +1,16 @@
 {
-  "name": "@eko24ive/pi-ask",
+  "name": "pi-ask-better",
   "version": "1.3.0",
   "description": "Pi package that adds an interactive ask_user clarification tool.",
   "license": "MIT",
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/eko24ive/pi-ask.git"
+    "url": "git+https://github.com/rinaldo-rex/pi-ask-better.git"
   },
-  "homepage": "https://github.com/eko24ive/pi-ask#readme",
+  "homepage": "https://github.com/rinaldo-rex/pi-ask-better#readme",
   "bugs": {
-    "url": "https://github.com/eko24ive/pi-ask/issues"
+    "url": "https://github.com/rinaldo-rex/pi-ask-better/issues"
   },
   "keywords": [
     "pi-package",
@@ -56,7 +56,7 @@
     "provenance": true
   },
   "release": {
-    "repositoryUrl": "https://github.com/eko24ive/pi-ask.git",
+    "repositoryUrl": "https://github.com/rinaldo-rex/pi-ask-better.git",
     "branches": [
       "main"
     ],
