@@ -1,3 +1,16 @@
+# 1.3.0 (2026-10-03)
+
+### Features
+
+* Request per-question layman explanations with `l`, without abandoning the batch ([#1](https://github.com/rinaldo-rex/pi-ask-better/issues/1)).
+* Dim and lock flagged choices while retaining them privately; pressing `l` again restores them.
+* Submit explanation requests alongside other answers, with plain-language/example instructions and targeted follow-up context.
+* Respect auto-submit settings and preserve existing keymaps when adding the new configurable shortcut.
+
+### Maintenance
+
+* Disable inherited automatic publishing in this fork; this version bump is Git-only.
+
 # [1.2.0](https://github.com/eko24ive/pi-ask/compare/v1.1.0...v1.2.0) (2026-08-16)
 
 
