@@ -49,6 +49,7 @@ Once installed, this package gives the agent a native way to ask for clarificati
 
 - 🧭 Familiar ask-style interface: tabbed questions, single/multi select, and preview mode
 - ⭐ Optional warning-colored `(recommended)` markers that do not preselect answers
+- 💡 Per-question layman explanation requests (`l`) without abandoning the batch
 - ✍️ Inline free-form `Type your own` answers
 - 📎 Native pi-style `@` file references inside answer and note editors
 - 📝 Question-level and option-level notes
@@ -117,6 +118,8 @@ Default contexts:
 - `noteEditor`: note save/close and empty-editor navigation
 - `settingsModal`: close, next/previous setting, and toggle
 
+Press `l` on a confusing question to request a plain-language explanation of its options with examples. Its choices dim and pause; other questions remain usable. Press `l` again to undo the request and restore your saved choices. `Enter` or `Tab` continues to the next question. On submission, only the explanation request—not saved choices for that question—is sent alongside answers to other questions. The agent is instructed to explain and re-ask only the flagged questions. Auto-submit respects your setting and counts a flagged question as a response; existing notes still prevent auto-submit. Customize the shortcut with `keymaps.main.requestLaymanExplanation`.
+
 Fixed bindings:
 
 | Key | Context | Effect |
@@ -158,6 +161,7 @@ You can edit the config file yourself, ask pi to edit it for you, or use `/ask-s
       "cancel": ["esc"],
       "toggle": ["space"],
       "changeQuestionType": ["t"],
+      "requestLaymanExplanation": ["l"],
       "nextTab": ["tab", "right"],
       "previousTab": ["shift+tab", "left"],
       "nextOption": ["down"],

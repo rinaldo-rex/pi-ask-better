@@ -55,7 +55,11 @@ export function moveOption(state: AskState, delta: number): AskState {
 		};
 	}
 
-	const options = getRenderableOptions(getCurrentQuestion(state));
+	const question = getCurrentQuestion(state);
+	if (question && state.answers[question.id]?.laymanRequested) {
+		return state;
+	}
+	const options = getRenderableOptions(question);
 	return {
 		...state,
 		activeOptionIndex: clamp(

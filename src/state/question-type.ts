@@ -17,7 +17,7 @@ export function cycleCurrentQuestionType(
 	}
 
 	const question = getCurrentQuestion(state);
-	if (!question) {
+	if (!question || state.answers[question.id]?.laymanRequested) {
 		return { needsConfirmation: false, state };
 	}
 

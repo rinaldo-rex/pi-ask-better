@@ -19,6 +19,7 @@ export interface ReviewQuestionModel {
 	extraOptionNotes?: Array<{ label: string; note: string }>;
 	isCustomOnly?: boolean;
 	label: string;
+	laymanRequested?: boolean;
 	note?: string;
 	selections?: ReviewSelectionModel[];
 	unanswered: boolean;
@@ -47,10 +48,12 @@ export function buildReviewScreenModel(
 			? "wide"
 			: "stacked",
 		questions: state.questions.map((question) =>
-			toReviewQuestionModel(
-				question.label,
-				toReviewAnswer(question, state.answers[question.id], showAllNotes)
-			)
+			state.answers[question.id]?.laymanRequested
+				? { label: question.label, laymanRequested: true, unanswered: false }
+				: toReviewQuestionModel(
+						question.label,
+						toReviewAnswer(question, state.answers[question.id], showAllNotes)
+					)
 		),
 	};
 }

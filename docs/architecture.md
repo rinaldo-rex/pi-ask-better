@@ -68,6 +68,10 @@ The codebase is split so the implementation reads through file boundaries and na
 ## Invariants worth preserving
 
 - submit is never blocked by unanswered questions
+- per-question `AskStateAnswer.laymanRequested` retains choices/custom text privately, counts as dirty state, and locks choice-changing transitions until toggled off
+- flagged questions are not committed answers; result serialization emits full context in `laymanExplanation`, omits their saved choices, and preserves unaffected answers through continuation metadata and model-visible text
+- configured auto-submit counts flagged questions as responses, retaining the existing review-tab/no-notes requirements
+- `main.requestLaymanExplanation` is an additive v5 keymap field; missing bindings default in memory without rewriting files or taking an existing main/global `l` binding
 - single-select answers serialize as arrays
 - when `behaviour.presentSingleAsMulti` is enabled, future single-select questions are handled with multi-select state semantics while result metadata preserves the requested `type` and adds `presentedType`
 - active-flow question type changes are per-question runtime overrides handled in state/controller logic; they do not mutate the stored source payload or global config

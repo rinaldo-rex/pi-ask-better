@@ -60,14 +60,20 @@ function renderTabs(state: AskState, theme: Theme, width: number): string {
 	const tabs = state.questions.map((question, index) => {
 		const active = state.activeTabIndex === index;
 		const answered = isQuestionAnswered(state, question.id);
-		const marker = answered ? "☒" : "☐";
+		const requested = state.answers[question.id]?.laymanRequested;
+		let marker = answered ? "☒" : "☐";
+		let color: "success" | "muted" | "warning" = answered ? "success" : "muted";
+		if (requested) {
+			marker = "?";
+			color = "warning";
+		}
 		const text = ` ${marker} ${question.label} `;
 		return {
 			text,
 			width: visibleWidth(text),
 			render: active
 				? theme.bg("selectedBg", theme.fg("text", text))
-				: theme.fg(answered ? "success" : "muted", text),
+				: theme.fg(color, text),
 		};
 	});
 
@@ -202,10 +208,12 @@ function renderFooter(
 		footer = renderFooterText(config, "submit");
 	} else {
 		const question = getCurrentQuestion(state);
-		footer = renderFooterText(
-			config,
-			question?.type === "multi" ? "multi" : "default"
-		);
+		let context: "multi" | "default" | "layman" =
+			question?.type === "multi" ? "multi" : "default";
+		if (question && state.answers[question.id]?.laymanRequested) {
+			context = "layman";
+		}
+		footer = renderFooterText(config, context);
 	}
 	return wrapDelimitedFooterHints(footer, width);
 }

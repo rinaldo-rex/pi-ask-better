@@ -82,6 +82,7 @@ export interface AskKeyBinding {
 export type FooterKeymapContext =
 	| "default"
 	| "multi"
+	| "layman"
 	| "submit"
 	| "input"
 	| "note";
@@ -95,6 +96,7 @@ export const DEFAULT_ASK_KEYMAPS: AskConfigKeymaps = {
 		confirm: ["enter"],
 		cancel: ["esc"],
 		changeQuestionType: ["t"],
+		requestLaymanExplanation: ["l"],
 		toggle: ["space"],
 		nextTab: ["tab", "right"],
 		previousTab: ["shift+tab", "left"],
@@ -136,6 +138,8 @@ const DESCRIPTIONS: Record<AskKeymapContext, Record<string, string>> = {
 		confirm: "Confirm selection, continue, or submit",
 		cancel: "Cancel flow",
 		changeQuestionType: "Change current question type",
+		requestLaymanExplanation:
+			"Toggle layman explanation request for current question",
 		toggle: "Toggle selected option",
 		nextTab: "Switch to next tab",
 		previousTab: "Switch to previous tab",
@@ -175,6 +179,14 @@ const footerHint = (
 ) => `${label} ${action}`;
 
 const footerKeyIdLabel = (binding: AskKeyBinding) => binding.keys.join(" / ");
+
+const optionalFooterHint = (
+	binding: AskKeyBinding,
+	action: string
+): string[] =>
+	binding.keys.length
+		? [footerHint(binding, action, footerKeyIdLabel(binding))]
+		: [];
 
 export function formatKeybindingLabel(key: string): string {
 	if (key === "up") {
@@ -329,12 +341,26 @@ export function renderFooterKeymaps(
 			footerHint(main.cancel, "cancel"),
 			footerHint(global.settings, "settings"),
 		],
+		layman: [
+			...optionalFooterHint(
+				main.requestLaymanExplanation,
+				"undo explanation request"
+			),
+			footerHint(main.confirm, "continue"),
+			footerHint(main.optionNote, "note", noteNavigationLabel),
+			footerHint(main.cancel, "dismiss"),
+			footerHint(global.settings, "settings"),
+		],
 		multi: [
 			footerHint(main.toggle, "toggle"),
 			footerHint(
 				main.changeQuestionType,
 				"question type",
 				footerKeyIdLabel(main.changeQuestionType)
+			),
+			...optionalFooterHint(
+				main.requestLaymanExplanation,
+				"layman explanation"
 			),
 			footerHint(main.confirm, "continue"),
 			footerHint(main.optionNote, "note", noteNavigationLabel),
@@ -346,6 +372,10 @@ export function renderFooterKeymaps(
 				main.changeQuestionType,
 				"question type",
 				footerKeyIdLabel(main.changeQuestionType)
+			),
+			...optionalFooterHint(
+				main.requestLaymanExplanation,
+				"layman explanation"
 			),
 			footerHint(main.confirm, "confirm"),
 			footerHint(main.optionNote, "note", noteNavigationLabel),
@@ -390,12 +420,25 @@ export function normalizeConfiguredKeymaps(
 		normalized[context] = contextResult.keymaps as never;
 	}
 
+	addMissingLaymanBinding(candidate, normalized);
 	const globalDuplicates = validateCrossContextConflicts(normalized);
 	if (globalDuplicates) {
 		return { ok: false, error: globalDuplicates };
 	}
 
 	return { ok: true, keymaps: normalized };
+}
+
+function addMissingLaymanBinding(candidate: object, keymaps: AskConfigKeymaps) {
+	const main = (candidate as { main?: Record<string, unknown> }).main;
+	if (main?.requestLaymanExplanation !== undefined) {
+		return;
+	}
+	const claimed = [
+		...flattenBindings(keymaps.global),
+		...flattenBindings(keymaps.main),
+	].some(({ key }) => key === "l");
+	keymaps.main.requestLaymanExplanation = claimed ? [] : ["l"];
 }
 
 function normalizeContextKeymaps(
@@ -411,6 +454,15 @@ function normalizeContextKeymaps(
 	const normalized: Record<string, string[]> = {};
 	for (const action of Object.keys(defaults)) {
 		const rawValue = rawContext[action];
+		if (
+			context === "main" &&
+			action === "requestLaymanExplanation" &&
+			(rawValue === undefined ||
+				(Array.isArray(rawValue) && rawValue.length === 0))
+		) {
+			normalized[action] = [];
+			continue;
+		}
 		if (rawValue === undefined) {
 			return { ok: false, error: `Missing keymap for ${context}.${action}.` };
 		}
@@ -611,6 +663,7 @@ function cloneKeymaps(keymaps: AskConfigKeymaps): AskConfigKeymaps {
 			confirm: [...keymaps.main.confirm],
 			cancel: [...keymaps.main.cancel],
 			changeQuestionType: [...keymaps.main.changeQuestionType],
+			requestLaymanExplanation: [...keymaps.main.requestLaymanExplanation],
 			toggle: [...keymaps.main.toggle],
 			nextTab: [...keymaps.main.nextTab],
 			previousTab: [...keymaps.main.previousTab],
