@@ -1,3 +1,21 @@
+# 1.3.1 (2026-10-04)
+
+### Features
+
+* Request an immediate layman explanation with `Shift+L`, with chat above a frozen questionnaire summary ([#2](https://github.com/rinaldo-rex/pi-ask-better/issues/2), [#5](https://github.com/rinaldo-rex/pi-ask-better/pull/5)).
+* Resume with `resume_ask_user` or `/ask:continue`, preserving answers, drafts, all notes, presentation overrides, and deferred `l` requests.
+* Validate targeted question revisions and retain saved forms across reload, interruption, and branch navigation.
+
+### Bug Fixes
+
+* Preserve existing legacy key bindings when adding explanation shortcuts.
+* Prevent intentional pauses from reopening the original interrupted tool call from scratch.
+* Keep save errors from accidentally confirming dismissal of dirty answers.
+
+### Maintenance
+
+* Publish explicitly versioned tags through GitHub Actions with npm trusted publishing and provenance; inherited semantic-release remains disabled.
+
 # 1.3.0 (2026-10-03)
 
 ### Features

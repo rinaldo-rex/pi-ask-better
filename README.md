@@ -3,7 +3,7 @@
 # pi-ask-better
 
 [![npm downloads](https://badgen.net/npm/dm/pi-ask-better)](https://www.npmjs.com/package/pi-ask-better)
-[![last commit](https://badgen.net/github/last-commit/rinaldo-rex/pi-ask-better?v=6adc9e7)](https://github.com/rinaldo-rex/pi-ask-better/commits/main)
+[![last commit](https://badgen.net/github/last-commit/rinaldo-rex/pi-ask-better?v=033dd1e)](https://github.com/rinaldo-rex/pi-ask-better/commits/main)
 [![stars](https://badgen.net/github/stars/rinaldo-rex/pi-ask-better)](https://github.com/rinaldo-rex/pi-ask-better/stargazers)
 
 > [!IMPORTANT]
@@ -57,7 +57,7 @@ Preserve any other existing settings and package entries. This disables the orig
 
 ### npm
 
-Once `pi-ask-better` is published to npm, the equivalent project-local command is:
+The equivalent project-local npm install is:
 
 ```bash
 pi install --local npm:pi-ask-better
@@ -79,7 +79,7 @@ Or try it once without persisting an installation:
 pi -e git:github.com/rinaldo-rex/pi-ask-better
 ```
 
-The fork retains upstream config paths and remote-event names for compatibility; those identifiers do not mean the upstream extension is loaded. Automatic publishing is disabled in this fork until a fork-specific release setup is explicitly enabled.
+The fork retains upstream config paths and remote-event names for compatibility; those identifiers do not mean the upstream extension is loaded. Stable version tags publish the committed version through GitHub Actions with npm trusted publishing; the inherited semantic-release job remains disabled. See [release setup](docs/releases.md).
 
 ## Features
 
@@ -348,3 +348,4 @@ Docs stay intentionally small:
 - `docs/README.md` — index
 - `docs/contract.md` — external behavior
 - `docs/architecture.md` — module boundaries and invariants
+- `docs/releases.md` — version-tag publishing and npm trust setup
