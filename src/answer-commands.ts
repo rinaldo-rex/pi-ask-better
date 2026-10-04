@@ -19,6 +19,8 @@ import {
 	validateParams,
 } from "./ask-tool-helpers.ts";
 import { getAskConfigStore } from "./config/store.ts";
+import type { AskPauseRuntime } from "./paused-ask.ts";
+import { findPausedAsk } from "./paused-ask-store.ts";
 import type { RemoteAskRuntime, RemoteAskSource } from "./remote-ask.ts";
 import type { AskParams, AskResult } from "./types.ts";
 import { runAskFlow } from "./ui/controller.ts";
@@ -41,12 +43,13 @@ type ExtractionUiResult =
 
 export function registerAnswerCommands(
 	pi: ExtensionAPI,
-	remoteAsk?: RemoteAskRuntime
+	remoteAsk?: RemoteAskRuntime,
+	pause?: AskPauseRuntime
 ): void {
 	pi.registerCommand("answer", {
 		description:
 			"Extract questions from the latest assistant message into an ask form",
-		handler: async (_args, ctx) => runAnswerCommand(pi, ctx, remoteAsk),
+		handler: async (_args, ctx) => runAnswerCommand(pi, ctx, remoteAsk, pause),
 	});
 
 	pi.registerCommand("answer:again", {
@@ -56,6 +59,7 @@ export function registerAnswerCommands(
 				missingMessage:
 					"No previous /answer form found on this branch; use /answer first.",
 				noticePrefix: "Reopening previous /answer form on this branch",
+				pause,
 				remoteSource: "answer:again",
 				source: "answer-extraction",
 				remoteAsk,
@@ -68,6 +72,7 @@ export function registerAnswerCommands(
 			runReplayCommand(pi, ctx, {
 				missingMessage: "No previous ask_user form found on this branch.",
 				noticePrefix: "Replaying previous ask_user form on this branch",
+				pause,
 				remoteSource: "ask:replay",
 				source: "tool",
 				remoteAsk,
@@ -78,13 +83,17 @@ export function registerAnswerCommands(
 async function runAnswerCommand(
 	pi: ExtensionAPI,
 	ctx: ExtensionCommandContext,
-	remoteAsk?: RemoteAskRuntime
+	remoteAsk?: RemoteAskRuntime,
+	pause?: AskPauseRuntime
 ): Promise<void> {
 	if (ctx.mode !== "tui") {
 		ctx.ui.notify("/answer requires interactive TUI mode.", "error");
 		return;
 	}
 
+	if (pause && refusePausedRestart(ctx)) {
+		return;
+	}
 	const assistant = findLatestAssistantText(ctx);
 	if ("error" in assistant) {
 		ctx.ui.notify(assistant.error, "error");
@@ -125,6 +134,7 @@ async function runAnswerCommand(
 
 	await runAskAndSendSubmittedResult(pi, ctx, params, {
 		allowFreeform: true,
+		pause,
 		remoteAsk,
 		remoteSource: "answer",
 	});
@@ -251,6 +261,7 @@ async function runReplayCommand(
 	options: {
 		missingMessage: string;
 		noticePrefix: string;
+		pause?: AskPauseRuntime;
 		remoteAsk?: RemoteAskRuntime;
 		remoteSource: RemoteAskSource;
 		source: AskPayloadSource;
@@ -276,6 +287,7 @@ async function runReplayCommand(
 	);
 	await runAskAndSendSubmittedResult(pi, ctx, lookup.data.params, {
 		allowFreeform: options.source === "answer-extraction",
+		pause: options.pause,
 		remoteAsk: options.remoteAsk,
 		remoteSource: options.remoteSource,
 	});
@@ -287,13 +299,18 @@ async function runAskAndSendSubmittedResult(
 	params: AskParams,
 	options: {
 		allowFreeform: boolean;
+		pause?: AskPauseRuntime;
 		remoteAsk?: RemoteAskRuntime;
 		remoteSource: RemoteAskSource;
 	}
 ): Promise<void> {
+	if (options.pause && refusePausedRestart(ctx)) {
+		return;
+	}
 	const result = await withHiddenWorkingRow(ctx, () =>
 		runAskFlow(ctx, params, {
 			allowFreeform: options.allowFreeform,
+			pause: options.pause,
 			remote: options.remoteAsk
 				? { runtime: options.remoteAsk, source: options.remoteSource }
 				: undefined,
@@ -304,6 +321,17 @@ async function runAskAndSendSubmittedResult(
 		return;
 	}
 	sendAskResult(pi, result, ctx);
+}
+
+function refusePausedRestart(ctx: ExtensionContext): boolean {
+	if (!findPausedAsk(ctx)) {
+		return false;
+	}
+	ctx.ui.notify(
+		"A questionnaire is paused; use /ask:continue to resume its saved answers and notes.",
+		"info"
+	);
+	return true;
 }
 
 async function withHiddenWorkingRow<T>(

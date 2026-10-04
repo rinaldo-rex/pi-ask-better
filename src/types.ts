@@ -140,7 +140,8 @@ export interface AskResult {
 	elaboration?: AskElaborationPayload;
 	error?: AskValidationError;
 	laymanExplanation?: AskLaymanExplanationPayload;
-	mode: "submit" | "elaborate";
+	mode: "submit" | "elaborate" | "pause";
+	pause?: { id: string; questionId: string };
 	questions: AskQuestionSummary[];
 	title?: string;
 }

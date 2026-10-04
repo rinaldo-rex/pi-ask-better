@@ -7,6 +7,7 @@ import type {
 import { Value } from "typebox/value";
 import { findPayloadForSourceEntry } from "./ask-payload-store.ts";
 import { validateParams } from "./ask-tool-helpers.ts";
+import { ASK_PAUSED_ENTRY_TYPE, isValidPausedAsk } from "./paused-ask-store.ts";
 import { AskParamsSchema } from "./schema.ts";
 import type { AskParams } from "./types.ts";
 
@@ -56,6 +57,15 @@ function collectResolvedToolCallIds(
 		const dismissedToolCallId = getDismissedToolCallId(entry);
 		if (dismissedToolCallId) {
 			resolved.add(dismissedToolCallId);
+			continue;
+		}
+		if (
+			entry.type === "custom" &&
+			entry.customType === ASK_PAUSED_ENTRY_TYPE &&
+			isValidPausedAsk(entry.data) &&
+			entry.data.pendingToolCallId
+		) {
+			resolved.add(entry.data.pendingToolCallId);
 			continue;
 		}
 		if (entry.type === "message" && entry.message.role === "toolResult") {

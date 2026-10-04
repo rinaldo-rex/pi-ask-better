@@ -4,6 +4,8 @@ import type {
 	SessionStartEvent,
 } from "@earendil-works/pi-coding-agent";
 import { successfulResponse } from "./ask-tool-helpers.ts";
+import type { AskPauseRuntime } from "./paused-ask.ts";
+import { findPausedAsk } from "./paused-ask-store.ts";
 import {
 	appendPendingAskDismissal,
 	findPendingAskToolCall,
@@ -22,7 +24,8 @@ const DISMISS_NOTICE =
 
 export function registerPendingAskResume(
 	pi: ExtensionAPI,
-	remoteAsk: RemoteAskRuntime
+	remoteAsk: RemoteAskRuntime,
+	pause?: AskPauseRuntime
 ): void {
 	let reopening = false;
 
@@ -31,6 +34,9 @@ export function registerPendingAskResume(
 			return;
 		}
 
+		if (pause && findPausedAsk(ctx)) {
+			return;
+		}
 		const pendingAsk = findPendingAskToolCall(ctx);
 		if (!pendingAsk) {
 			return;
@@ -38,7 +44,7 @@ export function registerPendingAskResume(
 
 		reopening = true;
 		queueMicrotask(() => {
-			reopenPendingAsk(pi, ctx, pendingAsk, remoteAsk)
+			reopenPendingAsk(pi, ctx, pendingAsk, remoteAsk, pause)
 				.catch((error) => {
 					ctx.ui.notify(
 						`Could not reopen unanswered ask_user form: ${formatError(error)}`,
@@ -56,7 +62,8 @@ async function reopenPendingAsk(
 	pi: Pick<ExtensionAPI, "appendEntry" | "sendUserMessage">,
 	ctx: ExtensionContext,
 	pendingAsk: PendingAskToolCall,
-	remoteAsk: RemoteAskRuntime
+	remoteAsk: RemoteAskRuntime,
+	pause?: AskPauseRuntime
 ): Promise<void> {
 	ctx.ui.notify(
 		`Reopening unanswered ask_user form: ${pendingAsk.params.questions.length} question(s).`,
@@ -67,6 +74,8 @@ async function reopenPendingAsk(
 	let result: Awaited<ReturnType<typeof runAskFlow>>;
 	try {
 		result = await runAskFlow(ctx, pendingAsk.params, {
+			pause,
+			pendingToolCallId: pendingAsk.toolCallId,
 			remote: {
 				runtime: remoteAsk,
 				source: "ask:resume",

@@ -59,7 +59,8 @@ This document defines the stable external behavior. It does not explain internal
         message: string;
       }>;
     };
-    mode: "submit" | "elaborate";
+    mode: "submit" | "elaborate" | "pause";
+    pause?: { id: string; questionId: string };
     questions: Array<{
       id: string;
       label: string;
@@ -189,14 +190,14 @@ This document defines the stable external behavior. It does not explain internal
 - `cancelled: true` means the user dismissed the flow, UI was unavailable, or the payload was invalid before UI opened
 - semantically invalid payloads that reach tool execution return `error.kind === "invalid_input"` with structured `issues` and a transcript-friendly `Invalid ask_user payload:` message; their rendered status is `Invalid tool payload`
 - payloads missing schema-required fields fail Pi's schema validation before tool execution and use Pi's standard tool-error result without structured `details`
-- `mode: "submit"` is normal completion; `mode: "elaborate"` means the user asked the agent to continue with follow-up clarification based on notes
+- `mode: "submit"` is normal completion; `mode: "elaborate"` means the user asked the agent to continue with follow-up clarification based on notes; `mode: "pause"` is an immediate explanation handoff, neither final submission nor cancellation
 - unanswered questions without notes are omitted from `answers`; note-only entries remain in `answers` to carry their notes, but all non-cancelled submitted result text includes `<label>: (no answer)` in summary mode and `? <label>: (no answer)` in transcript rendering
 - in `mode: "elaborate"`, `answers` contains only committed answers; note-only entries move to `elaboration.items`
 - `continuation.strategy === "refine_only"` means the next ask should refine the current flow rather than restart it
 - `continuation.preservedAnswers` contains previously committed answers that should be kept as context and not re-asked
 - `continuation.affectedQuestionIds` lists the only questions that should be revisited
 - `continuation.questionStates` marks each question as `answered`, `needs_clarification`, or `unanswered`
-- non-cancelled results with flagged questions include `laymanExplanation` in either submit or elaborate mode, with full question/option context, user notes, and plain-language/example instructions
+- non-cancelled batch results with flagged questions include `laymanExplanation` in either submit or elaborate mode, with full question/option context, user notes, and plain-language/example instructions; pause results include only the active immediate question's explanation request
 - flagged questions are omitted from `answers` and from committed elaboration answers; their privately saved choices/custom text are never sent as answers
 - results with flags include `continuation` even in submit mode: flagged questions are `needs_clarification`, other committed answers are preserved, and unresponded questions remain `unanswered`
 - model-visible result text includes other answers, the requested questions/options/notes, and instructions to explain in everyday language first, then re-ask only flagged questions if needed; cancellation sends no explanation request
@@ -251,7 +252,7 @@ This document defines the stable external behavior. It does not explain internal
 - ask settings list with binary behaviour/notification toggles and a guarded reset-to-defaults action
 - `?` in the ask flow and `/ask-settings` in pi open the same lightweight ask settings overlay
 - settings attempt to persist immediately when changed: `Auto-submit when answered without notes`, `Confirm dismiss when dirty`, `Double-press review shortcuts`, `Notifications`, and `Show footer hints`; `Present single-select as multi-select` persists immediately when saving succeeds but applies only to new/replayed ask flows; save failures revert the setting and show a manual-edit message; resetting config to defaults requires pressing the reset action twice within a short confirmation window
-- the additive schema-version-5 `main.requestLaymanExplanation` keymap defaults in memory to `l` when absent, or to an unbound action if an existing main/global binding already owns `l`; existing bindings are preserved and `[]` can explicitly disable this new shortcut
+- additive schema-version-5 `main.requestLaymanExplanation` and `main.requestImmediateLaymanExplanation` keymaps default in memory to `l` and `Shift+L` when absent, or to unbound actions if existing main/global bindings own their defaults; existing bindings are preserved and `[]` explicitly disables either shortcut
 - `Keymaps` is a persisted, context-aware config section for global, main-flow, editor, note-editor, and settings-modal actions
 - the settings list shows the absolute config file path for customizing keymaps, notifications, and extraction settings
 - if the flow is already on the review tab, all questions are answered, and no notes exist, enabling auto-submit can complete the current ask flow immediately
@@ -268,6 +269,7 @@ Main flow:
 - `main.confirm`, `main.cancel`, and `main.toggle` confirm, cancel, or toggle; defaults: `Enter`, `Esc`, `Space`
 - `main.changeQuestionType` changes the active question type (non-preview: `single <-> multi`; preview: `preview <-> multi`); default: `t`; destructive `multi -> single` changes require pressing the type hotkey again, with no timeout, and the pending confirmation clears on other navigation/actions
 - `main.requestLaymanExplanation` toggles an explanation request for the active question; default: `l`; saved choices remain private while flagged, and selecting/toggling options, opening custom input, moving between options, and changing question type are disabled; `Enter` continues to the next tab and normal tab navigation/notes/settings remain available; the action has no effect on Review
+- `main.requestImmediateLaymanExplanation` pauses the active question for explanation now; default: `Shift+L`; no effect on Review or editor input, no dirty-dismiss confirmation, and no final/auto submission
 - `main.optionNote` and `main.questionNote` open option/question notes; defaults: `n`, `Shift+N`
 - `1..9` is fixed and selects or toggles the matching option; on the review tab, `1`, `2`, and `3` trigger `Submit`, `Elaborate`, and `Cancel`
 - when `Double-press review shortcuts` is enabled, review-tab `1`, `2`, and `3` require the same key twice without a timeout, and the review screen shows an inline hint for the pending action
@@ -293,6 +295,24 @@ Dirty dismiss:
 
 - when `Confirm dismiss when dirty` is enabled, cancelling or dismissing a dirty ask flow requires the same action a second time
 - the dirty-dismiss warning stays visible until the user changes tabs in the ask flow
+
+## Immediate explanation and saved resume
+
+- `Shift+L` persists a versioned `ask:paused` custom entry before releasing the current UI/tool call; if saving fails, the form stays open and shows the error
+- the main conversation agent explains in normal chat above a passive, dimmed questionnaire summary; no separate model/session or Herdr dependency is involved
+- the pause result has `cancelled: false`, `mode: "pause"`, `pause: { id, questionId }`, and `continuation.strategy: "resume"`; other answers are preserved context, not permission to act or final submission
+- only the active question is requested immediately; its saved choices/custom text and choices for deferred `l` flags remain private; outstanding flags are not flushed by pausing
+- the private checkpoint retains the full normalized form, active tab/option, selections, custom text, all question/option notes (including unselected option notes), presentation overrides, and deferred flags
+- after explaining, the agent calls `resume_ask_user({ pauseId, questions? })`; no new `ask_user` batch should be constructed
+- `questions`, when supplied, are full targeted replacements with existing ids for only the current or unanswered questions, not a replacement batch; adding/removing questions is not supported; omitted questions remain unchanged
+- omitted replacement label/type/required fields retain their prior values; unchanged requested types retain live presentation overrides; selected values are reconciled to current labels/indices and the highlighted option is restored by value
+- revisions are rejected atomically if they target another answered question, contain invalid/duplicate/unknown ids, remove selected/noted option values, or force multiple saved answers into a non-multi question
+- resume returns to the paused question with its immediate/deferred explanation flag cleared; all other flags and saved state remain intact, and final batch submission still includes previously completed answers
+- `/ask:continue` manually resumes the newest valid unresolved checkpoint on the current branch without revisions; command cancellation sends no agent message
+- submit, elaborate, user cancellation, or another successful pause resolves the previous checkpoint via `ask:pause-resolved`; another pause creates a fresh id; abort, navigation, UI failure, invalid revisions, and non-TUI use leave the saved checkpoint available for retry
+- checkpoint lookup scans only the current branch, validates stored data, and ignores resolved/incompatible snapshots; startup/reload/resume/fork and tree navigation restore only the passive summary, without starting an agent turn or reopening input automatically
+- a pending pause takes precedence over interrupted-tool recovery and blocks fresh `ask_user`/replay forms so saved answers cannot be silently restarted; a valid checkpoint also records the originating pending tool call and prevents its automatic replay even if its pause result was interrupted before persistence; concurrent resume attempts are refused
+- ending the active surface emits the normal remote `completed` event with `result.mode === "pause"`; resumed input opens a new remote flow with source `ask:continue`
 
 ## Non-TUI and non-interactive modes
 

@@ -13,6 +13,9 @@ export function renderResultText(result: AskResult): string {
 	if (result.cancelled) {
 		return CANCELLED_RESULT_TEXT;
 	}
+	if (result.mode === "pause") {
+		return `Paused for immediate explanation: ${result.questions.find((question) => question.id === result.pause?.questionId)?.label ?? "question"}. Answers and notes saved.`;
+	}
 	if (result.mode === "elaborate") {
 		const lines = formatElaborationLines(result, { mode: "render" });
 		return lines.join("\n") || ELABORATED_RESULT_TEXT;

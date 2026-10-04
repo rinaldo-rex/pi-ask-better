@@ -25,7 +25,7 @@ type PiAskStartedEvent = {
   version: 1;
   flowId: string;
   toolCallId?: string;
-  source: "tool" | "answer" | "answer:again" | "ask:replay" | "ask:resume";
+  source: "tool" | "answer" | "answer:again" | "ask:replay" | "ask:resume" | "ask:continue";
   title?: string;
   questions: AskQuestion[];
   createdAt: number;
@@ -111,11 +111,13 @@ type PiAskCompletedEvent = {
   version: 1;
   flowId: string;
   toolCallId?: string;
-  source: "tool" | "answer" | "answer:again" | "ask:replay" | "ask:resume";
+  source: "tool" | "answer" | "answer:again" | "ask:replay" | "ask:resume" | "ask:continue";
   result: AskResult;
   completedAt: number;
 };
 ```
+
+A local `Shift+L` handoff completes the current surface with `result.mode === "pause"`, not a submitted decision or cancellation. The old `flowId` no longer accepts remote input. Resuming the saved form emits a fresh `started` event with source `ask:continue` and a new `flowId`. Remote submissions still support only explicit `answer` or `cancel`, not pause/revision requests.
 
 ## Minimal bridge
 

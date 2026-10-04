@@ -18,8 +18,10 @@ The codebase is split so the implementation reads through file boundaries and na
 - `src/answer-commands.ts` — `/answer`, `/answer:again`, and `/ask:replay` command wiring
 - `src/answer-extraction.ts` — configured, session-scope-aware extraction model selection, synthetic `ask_user` tool-call extraction, and tolerant text fallback
 - `src/ask-payload-store.ts` — branch-aware persisted ask payload lookup
-- `src/pending-ask.ts` — active-branch unresolved tool-call detection and recovery dismissal persistence
+- `src/pending-ask.ts` — active-branch unresolved tool-call detection, intentional-pause handoff recognition, and recovery dismissal persistence
 - `src/resume-pending-ask.ts` — detached lifecycle wiring and recovered answer delivery
+- `src/paused-ask-store.ts` — versioned private questionnaire checkpoints, validation, branch-local lookup, and resolution markers
+- `src/paused-ask.ts` — immediate handoff persistence, explicit `resume_ask_user` / `/ask:continue` wiring, and resume lifecycle/abort coordination
 - `src/notifications.ts` — best-effort ask notification payload rendering and channel execution
 - `src/remote-ask.ts` — package-prefixed local event contract, active-flow registry, and explicit remote submission validation
 - `src/schema.ts` — TypeBox schema
@@ -32,6 +34,7 @@ The codebase is split so the implementation reads through file boundaries and na
 - `src/state/selectors.ts` — read-only selectors
 - `src/state/transitions.ts` — navigation, selection, notes, input, submit, cancel
 - `src/state/result.ts` — convert UI state to `AskResult`
+- `src/state/pause.ts` — pure immediate-result serialization and lossless, guarded revision/resume transitions
 - `src/state/view.ts` — view-mode helpers
 - `src/state.ts` — state barrel used by UI and tests
 
@@ -49,6 +52,7 @@ The codebase is split so the implementation reads through file boundaries and na
 - `src/ui/input.ts` — raw input to commands using resolved context-aware config-backed keymaps
 - `src/ui/dismiss-guard.ts` — pure helpers for dirty-flow exit confirmation behavior
 - `src/ui/render.ts` and `src/ui/render-*.ts` — screen rendering, including config-backed footer/keymap hints
+- `src/ui/paused-widget.ts` — bounded passive questionnaire summary below normal agent chat
 - `src/ui/settings-list.ts` / `src/ui/show-settings.ts` — lightweight ask settings list rendering and launcher
 - `src/ui/constants.ts` and `src/ui/render-types.ts` — rendering constants/contracts
 
@@ -72,6 +76,10 @@ The codebase is split so the implementation reads through file boundaries and na
 - flagged questions are not committed answers; result serialization emits full context in `laymanExplanation`, omits their saved choices, and preserves unaffected answers through continuation metadata and model-visible text
 - configured auto-submit counts flagged questions as responses, retaining the existing review-tab/no-notes requirements
 - `main.requestLaymanExplanation` is an additive v5 keymap field; missing bindings default in memory without rewriting files or taking an existing main/global `l` binding
+- intentional pause yields the waiting tool call only after saving the full private state; it is not submit/cancel and exposes only the active immediate explanation request
+- explicit resume restores state rather than reconstructing an ask payload; revisions cannot discard selections/notes or modify other answered questions
+- pause checkpoints and resolution markers follow only the active session branch; abort/navigation/UI failure retains the checkpoint, while a completed resume resolves it
+- the paused widget owns no input, and lifecycle recovery restores it without triggering a turn; an intentional pause takes precedence over interrupted-tool recovery
 - single-select answers serialize as arrays
 - when `behaviour.presentSingleAsMulti` is enabled, future single-select questions are handled with multi-select state semantics while result metadata preserves the requested `type` and adds `presentedType`
 - active-flow question type changes are per-question runtime overrides handled in state/controller logic; they do not mutate the stored source payload or global config

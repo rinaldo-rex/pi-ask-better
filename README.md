@@ -3,7 +3,7 @@
 # pi-ask-better
 
 [![npm downloads](https://badgen.net/npm/dm/pi-ask-better)](https://www.npmjs.com/package/pi-ask-better)
-[![last commit](https://badgen.net/github/last-commit/rinaldo-rex/pi-ask-better?v=be242d7)](https://github.com/rinaldo-rex/pi-ask-better/commits/main)
+[![last commit](https://badgen.net/github/last-commit/rinaldo-rex/pi-ask-better?v=6adc9e7)](https://github.com/rinaldo-rex/pi-ask-better/commits/main)
 [![stars](https://badgen.net/github/stars/rinaldo-rex/pi-ask-better)](https://github.com/rinaldo-rex/pi-ask-better/stargazers)
 
 > [!IMPORTANT]
@@ -88,6 +88,7 @@ Once installed, this package gives the agent a native way to ask for clarificati
 - 🧭 Familiar ask-style interface: tabbed questions, single/multi select, and preview mode
 - ⭐ Optional warning-colored `(recommended)` markers that do not preselect answers
 - 💡 Per-question layman explanation requests (`l`) without abandoning the batch
+- ⏸️ Immediate explanations (`Shift+L`) in chat above a frozen form, followed by state-preserving resume
 - ✍️ Inline free-form `Type your own` answers
 - 📎 Native pi-style `@` file references inside answer and note editors
 - 📝 Question-level and option-level notes
@@ -100,6 +101,7 @@ Once installed, this package gives the agent a native way to ask for clarificati
   - `/answer` extracts questions from the latest assistant message into an ask flow
   - `/answer:again` reopens the latest `/answer` form on the current branch
   - `/ask:replay` replays the latest real `ask_user` form on the current branch
+  - `/ask:continue` restores a deliberately paused questionnaire, including saved answers and notes
 - 🛟 Automatic recovery of an unanswered `ask_user` form after startup, resume, or fork
 - 🗣️ You can talk to your agent to configure pi-ask; it will read the bundled configuration guide and tailor the config for you
 
@@ -158,6 +160,8 @@ Default contexts:
 
 Press `l` on a confusing question to request a plain-language explanation of its options with examples. Its choices dim and pause; other questions remain usable. Press `l` again to undo the request and restore your saved choices. `Enter` or `Tab` continues to the next question. On submission, only the explanation request—not saved choices for that question—is sent alongside answers to other questions. The agent is instructed to explain and re-ask only the flagged questions. Auto-submit respects your setting and counts a flagged question as a response; existing notes still prevent auto-submit. Customize the shortcut with `keymaps.main.requestLaymanExplanation`.
 
+Press `Shift+L` when you need an explanation **before continuing**. The entire form is saved and paused—not submitted or cancelled—and a dimmed summary stays visible while the main agent explains above it. The agent then calls `resume_ask_user` to return to the active question with your answers, custom text, all notes, question types, and other `l` flags intact. It may simplify the current or unanswered questions, but cannot silently replace other answered questions or discard selected/noted option values. `/ask:continue` is a manual fallback if the agent does not resume. Customize or disable this shortcut with `keymaps.main.requestImmediateLaymanExplanation` (`["shift+l"]` or `[]`). Both explanation shortcuts are ordinary text in editors and have no effect on Review.
+
 Fixed bindings:
 
 | Key | Context | Effect |
@@ -200,6 +204,7 @@ You can edit the config file yourself, ask pi to edit it for you, or use `/ask-s
       "toggle": ["space"],
       "changeQuestionType": ["t"],
       "requestLaymanExplanation": ["l"],
+      "requestImmediateLaymanExplanation": ["shift+l"],
       "nextTab": ["tab", "right"],
       "previousTab": ["shift+tab", "left"],
       "nextOption": ["down"],
@@ -241,7 +246,7 @@ Accepted notation follows pi-tui key ids. Common aliases are normalized, for exa
 
 ## Use
 
-After installation, the extension registers the `ask_user` tool plus `/ask-settings`, `/answer`, `/answer:again`, and `/ask:replay` commands.
+After installation, the extension registers `ask_user` and `resume_ask_user` tools plus `/ask-settings`, `/answer`, `/answer:again`, `/ask:replay`, and `/ask:continue` commands.
 
 Agents can auto-discover and call `ask_user` when they need clarification instead of guessing. They can mark any number of grounded preferences with `recommended: true` and use option descriptions for reasons. In interactive sessions, it opens a terminal UI flow for structured answers, supports native pi-style `@` file references while typing answers or notes, and returns normalized answers back to the agent. Ask settings are available both from `?` in the ask flow and from the `/ask-settings` command. Behaviour and notification settings are binary `on`/`off` toggles that save immediately when the config file is writable; save failures revert the toggle and show a manual-edit message. The settings overlay includes a guarded double-press reset-to-defaults action; keymaps, notification channels, and extraction settings are changed by editing the shown config file path.
 
@@ -260,7 +265,7 @@ Cancellation is local to the UI: closing a replayed form does not start a new ag
 
 If Pi stops while an `ask_user` form is open, the tool call remains without a result. Starting, resuming, or forking that session reopens the newest unanswered form once. Submitting sends the result as a user message because the original tool execution no longer exists. Cancelling dismisses the automatic recovery. Either outcome prevents another automatic reopen, while `/ask:replay` remains available.
 
-New sessions and extension reloads do not trigger recovery.
+New sessions and extension reloads do not trigger interrupted-tool recovery. Intentionally paused forms instead restore their passive summary from the current branch, without opening a questionnaire or triggering an agent turn. Use `resume_ask_user` or `/ask:continue` to continue; replay starts a fresh form and is refused while a saved pause is pending.
 
 Kudos to [@k0valik](https://github.com/k0valik) for the `/answer` idea.
 

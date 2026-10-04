@@ -124,6 +124,9 @@ function cloneKeymaps(keymaps: AskConfigKeymaps): AskConfigKeymaps {
 			cancel: [...keymaps.main.cancel],
 			changeQuestionType: [...keymaps.main.changeQuestionType],
 			requestLaymanExplanation: [...keymaps.main.requestLaymanExplanation],
+			requestImmediateLaymanExplanation: [
+				...keymaps.main.requestImmediateLaymanExplanation,
+			],
 			confirm: [...keymaps.main.confirm],
 			nextOption: [...keymaps.main.nextOption],
 			nextTab: [...keymaps.main.nextTab],

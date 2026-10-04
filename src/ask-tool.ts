@@ -14,15 +14,19 @@ import {
 	validateParams,
 } from "./ask-tool-helpers.ts";
 import { getAskConfigStore } from "./config/store.ts";
+import type { AskPauseRuntime } from "./paused-ask.ts";
+import { findPausedAsk } from "./paused-ask-store.ts";
 import type { RemoteAskRuntime } from "./remote-ask.ts";
 import { AskParamsSchema } from "./schema.ts";
 import { prepareAskParams } from "./state/normalize.ts";
+import { createPauseResult } from "./state/pause.ts";
 import type { AskParams } from "./types.ts";
 import { runAskFlow } from "./ui/controller.ts";
 
 export function registerAskTool(
 	pi: ExtensionAPI,
-	remoteAsk?: RemoteAskRuntime
+	remoteAsk?: RemoteAskRuntime,
+	pause?: AskPauseRuntime
 ) {
 	pi.registerTool({
 		name: "ask_user",
@@ -41,7 +45,8 @@ export function registerAskTool(
 				signal,
 				onUpdate,
 				ctx,
-				remoteAsk
+				remoteAsk,
+				pause
 			),
 		renderCall: renderAskToolCall,
 		renderResult: renderAskToolResult,
@@ -52,10 +57,11 @@ async function executeAskTool(
 	pi: Pick<ExtensionAPI, "appendEntry">,
 	toolCallId: string,
 	params: AskParams,
-	_signal: AbortSignal | undefined,
+	signal: AbortSignal | undefined,
 	_onUpdate: unknown,
 	ctx: ExtensionContext,
-	remoteAsk?: RemoteAskRuntime
+	remoteAsk?: RemoteAskRuntime,
+	pause?: AskPauseRuntime
 ) {
 	const config = await getAskConfigStore().getConfig();
 	const validation = validateParams(params, {
@@ -63,6 +69,13 @@ async function executeAskTool(
 	});
 	if (!validation.ok) {
 		return invalidPayloadResponse(params, validation.issues);
+	}
+	const paused = pause && ctx.mode === "tui" ? findPausedAsk(ctx) : undefined;
+	if (paused) {
+		return {
+			...successfulResponse(createPauseResult(paused.state, paused.id)),
+			isError: true,
+		};
 	}
 	appendAskPayload(pi, {
 		params,
@@ -75,6 +88,9 @@ async function executeAskTool(
 	ctx.ui.setWorkingVisible(false);
 	try {
 		const result = await runAskFlow(ctx, params, {
+			pause,
+			pendingToolCallId: toolCallId,
+			signal,
 			remote: remoteAsk
 				? { runtime: remoteAsk, source: "tool", toolCallId }
 				: undefined,

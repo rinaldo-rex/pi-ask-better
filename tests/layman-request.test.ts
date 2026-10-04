@@ -344,7 +344,7 @@ test("l uses a customizable keymap and stays ordinary text in both editors", () 
 	});
 	assert.deepEqual(getInputCommand(state, config, "l"), { kind: "ignore" });
 	assert.deepEqual(getInputCommand(state, DEFAULT_ASK_CONFIG, "L"), {
-		kind: "ignore",
+		kind: "requestImmediateLaymanExplanation",
 	});
 	for (const editorState of [
 		enterInputMode(state, "architecture"),

@@ -52,6 +52,14 @@ export function formatResultLines(
 	return lines;
 }
 
+export function formatPauseResult(result: AskResult): string {
+	return [
+		"Questionnaire paused, not submitted or cancelled. Other answers below are preserved context, not permission to proceed.",
+		...formatResultLines(result, { mode: "summary" }),
+		`After explaining, call resume_ask_user({ pauseId: ${JSON.stringify(result.pause?.id)} }). The saved form resumes at question ${JSON.stringify(result.pause?.questionId)}; all other drafts, notes, and deferred l requests remain saved.`,
+	].join("\n");
+}
+
 function formatLaymanExplanationLines(result: AskResult): string[] {
 	const request = result.laymanExplanation;
 	if (!request) {
