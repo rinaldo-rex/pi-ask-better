@@ -5,6 +5,7 @@ import { registerAnswerCommands } from "./answer-commands.ts";
 import { registerAskSettingsCommand } from "./ask-settings-command.ts";
 import { registerAskTool } from "./ask-tool.ts";
 import { resetAskConfigStore } from "./config/store.ts";
+import { registerPausedAskResume } from "./paused-ask.ts";
 import { createRemoteAskRuntime } from "./remote-ask.ts";
 import { registerPendingAskResume } from "./resume-pending-ask.ts";
 
@@ -25,8 +26,9 @@ export default function askExtension(pi: ExtensionAPI) {
 	pi.on("session_shutdown", () => {
 		remoteAsk.disposeAll();
 	});
-	registerAskTool(pi, remoteAsk);
+	const pause = registerPausedAskResume(pi, remoteAsk);
+	registerAskTool(pi, remoteAsk, pause);
 	registerAskSettingsCommand(pi);
-	registerAnswerCommands(pi, remoteAsk);
-	registerPendingAskResume(pi, remoteAsk);
+	registerAnswerCommands(pi, remoteAsk, pause);
+	registerPendingAskResume(pi, remoteAsk, pause);
 }

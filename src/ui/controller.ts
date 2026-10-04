@@ -6,6 +6,7 @@ import {
 	createQuestionWaitingNotification,
 	notifyQuestionWaiting,
 } from "../notifications.ts";
+import type { AskPauseRuntime } from "../paused-ask.ts";
 import {
 	applyRemoteAskResponse,
 	type RemoteAskFlowHandle,
@@ -21,6 +22,7 @@ import {
 	submitEditorDraft,
 	syncStateToSelection,
 } from "../state/editor.ts";
+import { canPauseAsk } from "../state/pause.ts";
 import { cycleCurrentQuestionType } from "../state/question-type.ts";
 import { toAskResult } from "../state/result.ts";
 import {
@@ -68,12 +70,16 @@ type Keybindings = CustomCallbackArgs[2];
 type Done = (result: AskResult) => void;
 interface AskFlowOptions {
 	allowFreeform?: boolean;
+	initialState?: AskState;
+	pause?: AskPauseRuntime;
+	pendingToolCallId?: string;
 	presentSingleAsMulti?: boolean;
 	remote?: {
 		runtime: RemoteAskRuntime;
 		source: RemoteAskSource;
 		toolCallId?: string;
 	};
+	signal?: AbortSignal;
 }
 
 type AskFlowParams = AskParams &
@@ -91,6 +97,8 @@ interface AskFlowController {
 	dismissNotice?: string;
 	done: Done;
 	editor: Editor;
+	finished: boolean;
+	flowOptions: AskFlowOptions;
 	pendingQuestionTypeChangeQuestionId?: string;
 	pendingReviewShortcutActionIndex?: number;
 	remoteFlow?: RemoteAskFlowHandle;
@@ -147,9 +155,13 @@ function createAskFlowController(
 		ctx: params.ctx,
 		dismissNotice: undefined,
 		done,
+		finished: false,
+		flowOptions: params.flowOptions,
 		editor: createEditor(tui, theme, params.cwd),
 		settingsOpen: false,
-		state: createInitialState(params, params.flowOptions),
+		state: params.flowOptions.initialState
+			? structuredClone(params.flowOptions.initialState)
+			: createInitialState(params, params.flowOptions),
 		suppressAutoInputForSelection: false,
 		pendingQuestionTypeChangeQuestionId: undefined,
 		pendingReviewShortcutActionIndex: undefined,
@@ -173,7 +185,18 @@ function createAskFlowController(
 
 	controller.editor.onSubmit = (value) => submitEditor(controller, value);
 	controller.remoteFlow = startRemoteFlow(controller, params);
-	syncSelection(controller);
+	if (!params.flowOptions.initialState) {
+		syncSelection(controller);
+	}
+	const abort = () =>
+		finishResult(
+			controller,
+			toAskResult({ ...controller.state, cancelled: true })
+		);
+	params.flowOptions.signal?.addEventListener("abort", abort, { once: true });
+	if (params.flowOptions.signal?.aborted) {
+		queueMicrotask(abort);
+	}
 	notifyCurrentQuestion(controller).catch(() => {
 		// Notification failures are best-effort and must not affect the ask flow.
 	});
@@ -193,6 +216,7 @@ function createAskFlowController(
 			handleControllerInput(controller, data);
 		},
 		dispose() {
+			params.flowOptions.signal?.removeEventListener("abort", abort);
 			controller.remoteFlow?.dispose();
 			controller.unsubscribeConfig();
 		},
@@ -215,6 +239,9 @@ function renderController(
 }
 
 function handleControllerInput(controller: AskFlowController, data: string) {
+	if (controller.finished) {
+		return;
+	}
 	controller.editor.disableSubmit = !isNativeEditorSubmitEnabled(controller);
 	const command = getInputCommand(
 		controller.state,
@@ -280,15 +307,13 @@ function handleNavigationCommand(
 ) {
 	switch (command.kind) {
 		case "moveTab":
-			clearReviewShortcutPending(controller);
-			clearQuestionTypeChangePending(controller);
+			clearPendingActions(controller);
 			commitState(controller, moveTab(controller.state, command.delta), {
 				finish: true,
 			});
 			return;
 		case "moveOption":
-			clearReviewShortcutPending(controller);
-			clearQuestionTypeChangePending(controller);
+			clearPendingActions(controller);
 			commitState(controller, moveOption(controller.state, command.delta));
 			return;
 		case "toggleMulti":
@@ -297,7 +322,8 @@ function handleNavigationCommand(
 			handleToggleCurrentOption(controller);
 			return;
 		case "requestLaymanExplanation":
-			handleLaymanRequest(controller);
+		case "requestImmediateLaymanExplanation":
+			handleExplanationRequest(controller, command.kind);
 			return;
 		case "changeQuestionType":
 			clearReviewShortcutPending(controller);
@@ -355,7 +381,39 @@ function handleNavigationCommand(
 	}
 }
 
-function handleLaymanRequest(controller: AskFlowController) {
+function handleImmediateLaymanRequest(controller: AskFlowController) {
+	if (!canPauseAsk(controller.state)) {
+		return;
+	}
+	const pause = controller.flowOptions.pause;
+	if (!pause) {
+		controller.dismissNotice =
+			"Immediate explanation is unavailable in this ask flow.";
+		refresh(controller);
+		return;
+	}
+	try {
+		const result = pause.save(
+			controller.ctx,
+			controller.state,
+			controller.flowOptions.allowFreeform,
+			controller.flowOptions.pendingToolCallId
+		);
+		finishResult(controller, result);
+	} catch (error) {
+		controller.dismissNotice = `Could not pause questionnaire: ${error instanceof Error ? error.message : String(error)}`;
+		refresh(controller);
+	}
+}
+
+function handleExplanationRequest(
+	controller: AskFlowController,
+	kind: "requestLaymanExplanation" | "requestImmediateLaymanExplanation"
+) {
+	if (kind === "requestImmediateLaymanExplanation") {
+		handleImmediateLaymanRequest(controller);
+		return;
+	}
 	clearReviewShortcutPending(controller);
 	clearQuestionTypeChangePending(controller);
 	commitState(controller, toggleLaymanRequest(controller.state), {
@@ -475,7 +533,11 @@ function handleExitFlow(controller: AskFlowController, nextState: AskState) {
 		commitState(controller, nextState, { finish: true });
 		return;
 	}
-	if (shouldDiscardAfterConfirmation(!!controller.dismissNotice)) {
+	if (
+		shouldDiscardAfterConfirmation(
+			controller.dismissNotice === DIRTY_DISMISS_NOTICE
+		)
+	) {
 		commitState(controller, nextState, { finish: true });
 		return;
 	}
@@ -498,6 +560,11 @@ function shouldRequestDismissConfirmation(
 function clearFooterNotices(controller: AskFlowController) {
 	controller.configNotice = undefined;
 	controller.dismissNotice = undefined;
+}
+
+function clearPendingActions(controller: AskFlowController) {
+	clearReviewShortcutPending(controller);
+	clearQuestionTypeChangePending(controller);
 }
 
 function clearReviewShortcutPending(controller: AskFlowController) {
@@ -588,10 +655,17 @@ async function notifyCurrentQuestion(
 
 function maybeFinish(controller: AskFlowController) {
 	if (controller.state.completed) {
-		const result = toAskResult(controller.state);
-		controller.remoteFlow?.complete(result);
-		controller.done(result);
+		finishResult(controller, toAskResult(controller.state));
 	}
+}
+
+function finishResult(controller: AskFlowController, result: AskResult) {
+	if (controller.finished) {
+		return;
+	}
+	controller.finished = true;
+	controller.remoteFlow?.complete(result);
+	controller.done(result);
 }
 
 function startRemoteFlow(

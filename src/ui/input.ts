@@ -19,6 +19,7 @@ export type AskInputCommand =
 	| { kind: "cancel" }
 	| { kind: "changeQuestionType" }
 	| { kind: "requestLaymanExplanation" }
+	| { kind: "requestImmediateLaymanExplanation" }
 	| { kind: "dismiss" }
 	| { kind: "showSettings" }
 	| { kind: "numberShortcut"; digit: number }
@@ -138,8 +139,9 @@ function getNavigationInputCommand(
 	if (matchesBinding(data, bindings.toggle)) {
 		return { kind: "toggleMulti" };
 	}
-	if (matchesBinding(data, bindings.requestLaymanExplanation)) {
-		return { kind: "requestLaymanExplanation" };
+	const explanation = getExplanationInputCommand(bindings, data);
+	if (explanation) {
+		return explanation;
 	}
 	if (matchesBinding(data, bindings.changeQuestionType)) {
 		return { kind: "changeQuestionType" };
@@ -161,4 +163,20 @@ function getNavigationInputCommand(
 	return digit === null
 		? { kind: "ignore" }
 		: { kind: "numberShortcut", digit };
+}
+
+function getExplanationInputCommand(
+	bindings: {
+		requestImmediateLaymanExplanation: AskKeyBinding;
+		requestLaymanExplanation: AskKeyBinding;
+	},
+	data: string
+): AskInputCommand | undefined {
+	if (matchesBinding(data, bindings.requestImmediateLaymanExplanation)) {
+		return { kind: "requestImmediateLaymanExplanation" };
+	}
+	if (matchesBinding(data, bindings.requestLaymanExplanation)) {
+		return { kind: "requestLaymanExplanation" };
+	}
+	return;
 }

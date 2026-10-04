@@ -70,6 +70,7 @@ const AskConfigKeymapsSchema = Type.Object({
 		cancel: Type.Optional(AskKeyBindingSchema),
 		changeQuestionType: Type.Optional(AskKeyBindingSchema),
 		requestLaymanExplanation: Type.Optional(AskKeyBindingSchema),
+		requestImmediateLaymanExplanation: Type.Optional(AskKeyBindingSchema),
 		confirm: Type.Optional(AskKeyBindingSchema),
 		nextOption: Type.Optional(AskKeyBindingSchema),
 		nextTab: Type.Optional(AskKeyBindingSchema),
@@ -241,6 +242,7 @@ export interface AskConfigKeymaps {
 		cancel: string[];
 		changeQuestionType: string[];
 		requestLaymanExplanation: string[];
+		requestImmediateLaymanExplanation: string[];
 		confirm: string[];
 		nextOption: string[];
 		nextTab: string[];

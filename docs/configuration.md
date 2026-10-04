@@ -55,6 +55,7 @@ Unsupported future versions or invalid files are left unchanged and defaults are
       "toggle": ["space"],
       "changeQuestionType": ["t"],
       "requestLaymanExplanation": ["l"],
+      "requestImmediateLaymanExplanation": ["shift+l"],
       "nextTab": ["tab", "right"],
       "previousTab": ["shift+tab", "left"],
       "nextOption": ["down"],
@@ -223,6 +224,7 @@ Arrays are aliases: any listed key triggers the same action.
     "cancel": ["esc"],
     "changeQuestionType": ["t"],
     "requestLaymanExplanation": ["l"],
+    "requestImmediateLaymanExplanation": ["shift+l"],
     "toggle": ["space"],
     "nextTab": ["tab", "right"],
     "previousTab": ["shift+tab", "left"],
@@ -260,7 +262,13 @@ Arrays are aliases: any listed key triggers the same action.
 
 `keymaps.main.requestLaymanExplanation` defaults to `["l"]`. It toggles a plain-language explanation request on the active question, preserving its choices privately until the flag is removed. Flagged choices dim and are locked; `Enter` continues without selecting. The shortcut does not intercept typing in answer/note editors and has no effect on Review. Requests reach the agent only with batch submission (including auto-submit when enabled).
 
-This is an additive schema-version-5 field: old configs gain `l` in memory without disk changes. If an existing main/global action already owns `l`, its binding is preserved and the new action is left unbound; assign a free key manually. Only this new action accepts `[]` to disable its shortcut explicitly. Explicit conflicting bindings still use the normal invalid-keymap fallback.
+This is an additive schema-version-5 field: old configs gain `l` in memory without disk changes. If an existing main/global action already owns `l`, its binding is preserved and the new action is left unbound; assign a free key manually. Both explanation actions accept `[]` to disable their shortcuts explicitly. Explicit conflicting bindings still use the normal invalid-keymap fallback.
+
+### Immediate explanation shortcut
+
+`keymaps.main.requestImmediateLaymanExplanation` defaults to `["shift+l"]`. It saves the whole questionnaire, yields the waiting tool call, and asks the main agent to explain only the active question now. A passive dimmed summary remains below the chat. The agent then calls `resume_ask_user` to restore the active tab, answers, custom text, all notes, presentation overrides, and other deferred `l` flags. Only the explained question's flag is cleared on resume. `/ask:continue` offers manual recovery without revisions.
+
+This is also an additive schema-version-5 field: missing bindings default in memory without rewriting the file. An existing main/global `shift+l` binding is preserved and leaves this action unbound. Use `[]` to disable it. Explicit conflicts use the usual invalid-keymap fallback. `Shift+L` does not intercept typing in editors, has no effect on Review, and does not count as final submission or trigger auto-submit.
 
 ### Contexts
 
@@ -325,7 +333,7 @@ If configured keymaps are invalid:
 
 Invalid keymaps include:
 
-- missing one of the required contexts or actions (except the additive `main.requestLaymanExplanation` action)
+- missing one of the required contexts or actions (except the additive `main.requestLaymanExplanation` and `main.requestImmediateLaymanExplanation` actions)
 - unsupported key syntax
 - duplicate bindings within one context
 - duplicate bindings between `global` and `main`, `editor`, or `noteEditor`
@@ -361,6 +369,7 @@ Invalid keymaps include:
       "toggle": ["ctrl+t"],
       "changeQuestionType": ["t"],
       "requestLaymanExplanation": ["l"],
+      "requestImmediateLaymanExplanation": ["shift+l"],
       "nextTab": ["tab", "right"],
       "previousTab": ["shift+tab", "left"],
       "nextOption": ["down"],

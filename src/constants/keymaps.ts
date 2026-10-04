@@ -97,6 +97,7 @@ export const DEFAULT_ASK_KEYMAPS: AskConfigKeymaps = {
 		cancel: ["esc"],
 		changeQuestionType: ["t"],
 		requestLaymanExplanation: ["l"],
+		requestImmediateLaymanExplanation: ["shift+l"],
 		toggle: ["space"],
 		nextTab: ["tab", "right"],
 		previousTab: ["shift+tab", "left"],
@@ -140,6 +141,8 @@ const DESCRIPTIONS: Record<AskKeymapContext, Record<string, string>> = {
 		changeQuestionType: "Change current question type",
 		requestLaymanExplanation:
 			"Toggle layman explanation request for current question",
+		requestImmediateLaymanExplanation:
+			"Pause and request an immediate explanation for current question",
 		toggle: "Toggle selected option",
 		nextTab: "Switch to next tab",
 		previousTab: "Switch to previous tab",
@@ -324,6 +327,8 @@ export function renderFooterKeymaps(
 	const noteEditor = getAskContextBindings(config, "noteEditor");
 	const bindings = getAskKeyBindings(config);
 	const noteNavigationLabel = `${main.optionNote.label}/${main.questionNote.label}`;
+	const immediate = main.requestImmediateLaymanExplanation;
+	const explainNow = optionalFooterHint(immediate, "explain now");
 	const hintsByContext: Record<FooterKeymapContext, readonly string[]> = {
 		input: [
 			footerHint(editor.submit, "submit"),
@@ -342,6 +347,7 @@ export function renderFooterKeymaps(
 			footerHint(global.settings, "settings"),
 		],
 		layman: [
+			...explainNow,
 			...optionalFooterHint(
 				main.requestLaymanExplanation,
 				"undo explanation request"
@@ -352,6 +358,7 @@ export function renderFooterKeymaps(
 			footerHint(global.settings, "settings"),
 		],
 		multi: [
+			...explainNow,
 			footerHint(main.toggle, "toggle"),
 			footerHint(
 				main.changeQuestionType,
@@ -368,6 +375,7 @@ export function renderFooterKeymaps(
 			footerHint(global.settings, "settings"),
 		],
 		default: [
+			...explainNow,
 			footerHint(
 				main.changeQuestionType,
 				"question type",
@@ -420,7 +428,7 @@ export function normalizeConfiguredKeymaps(
 		normalized[context] = contextResult.keymaps as never;
 	}
 
-	addMissingLaymanBinding(candidate, normalized);
+	addMissingExplanationBindings(candidate, normalized);
 	const globalDuplicates = validateCrossContextConflicts(normalized);
 	if (globalDuplicates) {
 		return { ok: false, error: globalDuplicates };
@@ -429,16 +437,24 @@ export function normalizeConfiguredKeymaps(
 	return { ok: true, keymaps: normalized };
 }
 
-function addMissingLaymanBinding(candidate: object, keymaps: AskConfigKeymaps) {
+function addMissingExplanationBindings(
+	candidate: object,
+	keymaps: AskConfigKeymaps
+) {
 	const main = (candidate as { main?: Record<string, unknown> }).main;
-	if (main?.requestLaymanExplanation !== undefined) {
-		return;
+	for (const [action, key] of [
+		["requestLaymanExplanation", "l"],
+		["requestImmediateLaymanExplanation", "shift+l"],
+	] as const) {
+		if (main?.[action] !== undefined) {
+			continue;
+		}
+		const claimed = [
+			...flattenBindings(keymaps.global),
+			...flattenBindings(keymaps.main),
+		].some((binding) => binding.key === key);
+		keymaps.main[action] = claimed ? [] : [key];
 	}
-	const claimed = [
-		...flattenBindings(keymaps.global),
-		...flattenBindings(keymaps.main),
-	].some(({ key }) => key === "l");
-	keymaps.main.requestLaymanExplanation = claimed ? [] : ["l"];
 }
 
 function normalizeContextKeymaps(
@@ -456,7 +472,8 @@ function normalizeContextKeymaps(
 		const rawValue = rawContext[action];
 		if (
 			context === "main" &&
-			action === "requestLaymanExplanation" &&
+			(action === "requestLaymanExplanation" ||
+				action === "requestImmediateLaymanExplanation") &&
 			(rawValue === undefined ||
 				(Array.isArray(rawValue) && rawValue.length === 0))
 		) {
@@ -577,7 +594,7 @@ export function normalizeLegacyFlatKeymaps(
 	}
 	const raw = keymaps as Record<string, unknown>;
 	const defaults = cloneKeymaps(DEFAULT_ASK_KEYMAPS);
-	return {
+	const normalized = {
 		...defaults,
 		global: {
 			...defaults.global,
@@ -605,6 +622,10 @@ export function normalizeLegacyFlatKeymaps(
 			close: coerceLegacyBinding(raw.cancel, defaults.noteEditor.close),
 		},
 	};
+	normalized.main.requestLaymanExplanation = [];
+	normalized.main.requestImmediateLaymanExplanation = [];
+	addMissingExplanationBindings({}, normalized);
+	return normalized;
 }
 
 function coerceLegacyBinding(value: unknown, fallback: string[]): string[] {
@@ -664,6 +685,9 @@ function cloneKeymaps(keymaps: AskConfigKeymaps): AskConfigKeymaps {
 			cancel: [...keymaps.main.cancel],
 			changeQuestionType: [...keymaps.main.changeQuestionType],
 			requestLaymanExplanation: [...keymaps.main.requestLaymanExplanation],
+			requestImmediateLaymanExplanation: [
+				...keymaps.main.requestImmediateLaymanExplanation,
+			],
 			toggle: [...keymaps.main.toggle],
 			nextTab: [...keymaps.main.nextTab],
 			previousTab: [...keymaps.main.previousTab],

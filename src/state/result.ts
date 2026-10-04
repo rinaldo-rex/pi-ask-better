@@ -5,7 +5,11 @@ import {
 	LAYMAN_EXPLANATION_INSTRUCTION,
 	SUBMITTED_SUMMARY,
 } from "../constants/text.ts";
-import { formatElaborationLines, formatResultLines } from "../result-format.ts";
+import {
+	formatElaborationLines,
+	formatPauseResult,
+	formatResultLines,
+} from "../result-format.ts";
 import type {
 	AskContinuationPayload,
 	AskElaborationPayload,
@@ -80,6 +84,9 @@ export function toAskResult(state: AskState): AskResult {
 export function summarizeResult(result: AskResult): string {
 	if (result.cancelled) {
 		return CANCELLED_SUMMARY;
+	}
+	if (result.mode === "pause") {
+		return formatPauseResult(result);
 	}
 	if (result.mode === "elaborate") {
 		const lines = formatElaborationLines(result, { mode: "summary" });
