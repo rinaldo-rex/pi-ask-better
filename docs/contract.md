@@ -60,7 +60,7 @@ This document defines the stable external behavior. It does not explain internal
       }>;
     };
     mode: "submit" | "elaborate" | "pause";
-    pause?: { id: string; questionId: string };
+    pause?: { id: string; questionId: string; request?: "layman" | "uiVariations" };
     questions: Array<{
       id: string;
       label: string;
@@ -97,6 +97,11 @@ This document defines the stable external behavior. It does not explain internal
         note?: string;
         optionNotes?: Record<string, string>;
       }>;
+    };
+    // Same question/option/note shape as laymanExplanation.
+    uiVariations?: {
+      instruction: string;
+      questions: AskUiVariationsQuestion[];
     };
     continuation?: {
       strategy: "refine_only" | "resume";
@@ -190,7 +195,7 @@ This document defines the stable external behavior. It does not explain internal
 - `cancelled: true` means the user dismissed the flow, UI was unavailable, or the payload was invalid before UI opened
 - semantically invalid payloads that reach tool execution return `error.kind === "invalid_input"` with structured `issues` and a transcript-friendly `Invalid ask_user payload:` message; their rendered status is `Invalid tool payload`
 - payloads missing schema-required fields fail Pi's schema validation before tool execution and use Pi's standard tool-error result without structured `details`
-- `mode: "submit"` is normal completion; `mode: "elaborate"` means the user asked the agent to continue with follow-up clarification based on notes; `mode: "pause"` is an immediate explanation handoff, neither final submission nor cancellation
+- `mode: "submit"` is normal completion; `mode: "elaborate"` means the user asked the agent to continue with follow-up clarification based on notes; `mode: "pause"` is an immediate explanation or mockup handoff, neither final submission nor cancellation
 - unanswered questions without notes are omitted from `answers`; note-only entries remain in `answers` to carry their notes, but all non-cancelled submitted result text includes `<label>: (no answer)` in summary mode and `? <label>: (no answer)` in transcript rendering
 - in `mode: "elaborate"`, `answers` contains only committed answers; note-only entries move to `elaboration.items`
 - `continuation.strategy === "refine_only"` means the next ask should refine the current flow rather than restart it
@@ -300,7 +305,7 @@ Dirty dismiss:
 
 - `Shift+L` persists a versioned `ask:paused` custom entry before releasing the current UI/tool call; if saving fails, the form stays open and shows the error
 - the main conversation agent explains in normal chat above a passive, dimmed questionnaire summary; no separate model/session or Herdr dependency is involved
-- the pause result has `cancelled: false`, `mode: "pause"`, `pause: { id, questionId }`, and `continuation.strategy: "resume"`; other answers are preserved context, not permission to act or final submission
+- the pause result has `cancelled: false`, `mode: "pause"`, `pause: { id, questionId, request }`, and `continuation.strategy: "resume"`; other answers are preserved context, not permission to act or final submission
 - only the active question is requested immediately; its saved choices/custom text and choices for deferred `l` flags remain private; outstanding flags are not flushed by pausing
 - the private checkpoint retains the full normalized form, active tab/option, selections, custom text, all question/option notes (including unselected option notes), presentation overrides, and deferred flags
 - after explaining, the agent calls `resume_ask_user({ pauseId, questions? })`; no new `ask_user` batch should be constructed
@@ -313,6 +318,17 @@ Dirty dismiss:
 - checkpoint lookup scans only the current branch, validates stored data, and ignores resolved/incompatible snapshots; startup/reload/resume/fork and tree navigation restore only the passive summary, without starting an agent turn or reopening input automatically
 - a pending pause takes precedence over interrupted-tool recovery and blocks fresh `ask_user`/replay forms so saved answers cannot be silently restarted; a valid checkpoint also records the originating pending tool call and prevents its automatic replay even if its pause result was interrupted before persistence; concurrent resume attempts are refused
 - ending the active surface emits the normal remote `completed` event with `result.mode === "pause"`; resumed input opens a new remote flow with source `ask:continue`
+
+## UI variation requests and saved resume
+
+- `h` (`main.requestUiVariations`) toggles a per-question mockup request without immediate submission; choices dim/lock and stay private, while notes and tab navigation remain available. Toggling it off restores saved choices.
+- Submit/Elaborate results include `uiVariations: { instruction, questions }` with the same full question/option/note shape as `laymanExplanation`; flagged answers are omitted from committed answers and continuation marks them `needs_clarification`. Cancellation emits neither request payload.
+- Both request kinds may coexist on a question; both appear in question/review notices and result payloads. Either keeps choices locked until both flags are removed.
+- The generation instruction asks the main agent to render existing options only as temporary HTML mockups, open them in the default browser, and re-ask only flagged questions if needed. Small/simple surfaces should share a page; complex surfaces can use separate temp files for focused feedback. The extension neither generates HTML nor launches a browser itself.
+- `Shift+H` (`main.requestImmediateUiVariations`) uses the saved-pause flow with `pause.request: "uiVariations"` and a passive mockup-generation summary. Only the active mockup request is emitted; other deferred `l`/`h` requests stay saved. Resume clears only the served flag, leaving any `l` flag on the active question intact.
+- New explanation pauses identify `pause.request: "layman"`; legacy checkpoints without a request kind retain layman resume behavior.
+- Both new shortcuts are additive schema-version-6 fields: missing defaults are assigned only when unclaimed by existing main/global bindings. `[]` disables them. They remain ordinary text in editors and have no effect on Review.
+- UI variation flags count as responses for configured auto-submit, with the same Review/no-notes requirements. `Shift+H` does not submit or trigger dirty-dismiss confirmation.
 
 ## Non-TUI and non-interactive modes
 

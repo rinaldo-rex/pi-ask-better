@@ -3,7 +3,7 @@
 # pi-ask-better
 
 [![npm downloads](https://badgen.net/npm/dm/pi-ask-better)](https://www.npmjs.com/package/pi-ask-better)
-[![last commit](https://badgen.net/github/last-commit/rinaldo-rex/pi-ask-better?v=8f59eaa)](https://github.com/rinaldo-rex/pi-ask-better/commits/main)
+[![last commit](https://badgen.net/github/last-commit/rinaldo-rex/pi-ask-better?v=41123fb)](https://github.com/rinaldo-rex/pi-ask-better/commits/main)
 [![stars](https://badgen.net/github/stars/rinaldo-rex/pi-ask-better)](https://github.com/rinaldo-rex/pi-ask-better/stargazers)
 
 > [!IMPORTANT]
@@ -19,7 +19,7 @@ High-quality video: [demo.mp4](https://github.com/user-attachments/assets/a8503c
 
 ## What this fork changes
 
-This fork adds two things on top of upstream `@eko24ive/pi-ask`:
+This fork adds these features on top of upstream `@eko24ive/pi-ask`:
 
 - **Per-question layman explanations** — press `l` on a confusing question to
   flag it for a plain-language explanation with examples, without abandoning
@@ -30,8 +30,14 @@ This fork adds two things on top of upstream `@eko24ive/pi-ask`:
   the questionnaire via `resume_ask_user` (or `/ask:continue`) with answers,
   custom text, notes, and `l` flags intact.
 
-Everything else — interface, keymaps, settings, notifications, and replay
-commands — matches upstream behavior.
+- **Visual UI options** — press `h` to flag questions for HTML mockups at
+  submission, or `Shift+H` to pause and request the current question's mockups
+  immediately. The agent generates temporary HTML, opens it in your browser,
+  and resumes the saved form. Small surfaces share a page; complex ones can
+  use separate files for focused feedback.
+
+The fork keeps upstream's interface, settings, notifications, and replay
+features, with additional configurable request shortcuts.
 
 ## Contributions: chill mode
 
@@ -105,6 +111,7 @@ Once installed, this package gives the agent a native way to ask for clarificati
 - ⭐ Optional warning-colored `(recommended)` markers that do not preselect answers
 - 💡 Per-question layman explanation requests (`l`) without abandoning the batch
 - ⏸️ Immediate explanations (`Shift+L`) in chat above a frozen form, followed by state-preserving resume
+- 🖼️ UI variation requests (`h`) or immediate HTML mockups (`Shift+H`), generated and opened by the agent
 - ✍️ Inline free-form `Type your own` answers
 - 📎 Native pi-style `@` file references inside answer and note editors
 - 📝 Question-level and option-level notes
@@ -178,6 +185,10 @@ Press `l` on a confusing question to request a plain-language explanation of its
 
 Press `Shift+L` when you need an explanation **before continuing**. The entire form is saved and paused—not submitted or cancelled—and a dimmed summary stays visible while the main agent explains above it. The agent then calls `resume_ask_user` to return to the active question with your answers, custom text, all notes, question types, and other `l` flags intact. It may simplify the current or unanswered questions, but cannot silently replace other answered questions or discard selected/noted option values. `/ask:continue` is a manual fallback if the agent does not resume. Customize or disable this shortcut with `keymaps.main.requestImmediateLaymanExplanation` (`["shift+l"]` or `[]`). Both explanation shortcuts are ordinary text in editors and have no effect on Review.
 
+Press `h` to flag the active question for visual UI mockups without submitting immediately; press it again to undo. On submission, the agent receives the flagged options and notes, not your saved choices, and is instructed to generate temporary HTML and open it in your default browser. Small/simple surfaces can share a page; complex surfaces can use separate files.
+
+Press `Shift+H` to pause the whole form and request mockups for the current question immediately, then resume through `resume_ask_user` or `/ask:continue`. Only the served mockup flag is cleared; deferred `l` requests remain saved. The agent renders the existing options only, without extra designs. These shortcuts are configurable as `keymaps.main.requestUiVariations` and `keymaps.main.requestImmediateUiVariations`; use `[]` to disable. Both remain ordinary text in editors and have no effect on Review. HTML generation and browser opening depend on the agent's available tools, not a built-in HTML renderer.
+
 Fixed bindings:
 
 | Key | Context | Effect |
@@ -195,7 +206,7 @@ You can edit the config file yourself, ask pi to edit it for you, or use `/ask-s
 
 ```json
 {
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "answer": {
     "extractionModels": [
       { "provider": "openai-codex", "id": "gpt-5.4-mini" },
@@ -221,6 +232,8 @@ You can edit the config file yourself, ask pi to edit it for you, or use `/ask-s
       "changeQuestionType": ["t"],
       "requestLaymanExplanation": ["l"],
       "requestImmediateLaymanExplanation": ["shift+l"],
+      "requestUiVariations": ["h"],
+      "requestImmediateUiVariations": ["shift+h"],
       "nextTab": ["tab", "right"],
       "previousTab": ["shift+tab", "left"],
       "nextOption": ["down"],

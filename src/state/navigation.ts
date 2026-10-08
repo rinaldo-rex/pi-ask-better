@@ -1,5 +1,6 @@
 import { clamp } from "../math.ts";
 import type { AskState } from "../types.ts";
+import { isAnswerLocked } from "./answers.ts";
 import {
 	getCurrentQuestion,
 	getRenderableOptions,
@@ -56,7 +57,7 @@ export function moveOption(state: AskState, delta: number): AskState {
 	}
 
 	const question = getCurrentQuestion(state);
-	if (question && state.answers[question.id]?.laymanRequested) {
+	if (question && isAnswerLocked(state.answers[question.id])) {
 		return state;
 	}
 	const options = getRenderableOptions(question);

@@ -225,11 +225,13 @@ test("footer hints wrap into exact lines on narrow screens", () => {
 		editor: mockEditor(),
 	});
 
-	assert.deepEqual(lines.slice(-8, -1), [
+	assert.deepEqual(lines.slice(-10, -1), [
 		" shift+l explain now",
+		"shift+h mockups now",
 		"Space toggle",
 		"t question type",
 		"l layman explanation",
+		"h ui variations",
 		"Enter continue",
 		"N/Shift+N note",
 		"Esc dismiss · ? settings",

@@ -4,7 +4,7 @@ import {
 } from "../constants/keymaps.ts";
 import type {
 	AskConfig,
-	AskConfigFileV5,
+	AskConfigFileV6,
 	AskConfigKeymaps,
 	AskNotificationChannel,
 } from "./schema.ts";
@@ -38,7 +38,7 @@ export const DEFAULT_ASK_CONFIG: AskConfig = {
 };
 
 export function normalizeAskConfig(
-	config?: Partial<AskConfigFileV5> | AskConfig
+	config?: Partial<AskConfigFileV6> | AskConfig
 ): AskConfig {
 	return {
 		answer: {
@@ -83,10 +83,10 @@ export function normalizeAskConfig(
 	};
 }
 
-export function toAskConfigFileV5(config: AskConfig): AskConfigFileV5 {
+export function toAskConfigFileV6(config: AskConfig): AskConfigFileV6 {
 	const normalized = normalizeAskConfig(config);
 	return {
-		schemaVersion: 5,
+		schemaVersion: 6,
 		answer: {
 			extractionModels: normalized.answer.extractionModels,
 			extractionRetries: normalized.answer.extractionRetries,
@@ -126,6 +126,10 @@ function cloneKeymaps(keymaps: AskConfigKeymaps): AskConfigKeymaps {
 			requestLaymanExplanation: [...keymaps.main.requestLaymanExplanation],
 			requestImmediateLaymanExplanation: [
 				...keymaps.main.requestImmediateLaymanExplanation,
+			],
+			requestUiVariations: [...keymaps.main.requestUiVariations],
+			requestImmediateUiVariations: [
+				...keymaps.main.requestImmediateUiVariations,
 			],
 			confirm: [...keymaps.main.confirm],
 			nextOption: [...keymaps.main.nextOption],

@@ -20,6 +20,8 @@ export type AskInputCommand =
 	| { kind: "changeQuestionType" }
 	| { kind: "requestLaymanExplanation" }
 	| { kind: "requestImmediateLaymanExplanation" }
+	| { kind: "requestUiVariations" }
+	| { kind: "requestImmediateUiVariations" }
 	| { kind: "dismiss" }
 	| { kind: "showSettings" }
 	| { kind: "numberShortcut"; digit: number }
@@ -139,7 +141,7 @@ function getNavigationInputCommand(
 	if (matchesBinding(data, bindings.toggle)) {
 		return { kind: "toggleMulti" };
 	}
-	const explanation = getExplanationInputCommand(bindings, data);
+	const explanation = getRequestInputCommand(bindings, data);
 	if (explanation) {
 		return explanation;
 	}
@@ -165,18 +167,26 @@ function getNavigationInputCommand(
 		: { kind: "numberShortcut", digit };
 }
 
-function getExplanationInputCommand(
+function getRequestInputCommand(
 	bindings: {
 		requestImmediateLaymanExplanation: AskKeyBinding;
+		requestImmediateUiVariations: AskKeyBinding;
 		requestLaymanExplanation: AskKeyBinding;
+		requestUiVariations: AskKeyBinding;
 	},
 	data: string
 ): AskInputCommand | undefined {
 	if (matchesBinding(data, bindings.requestImmediateLaymanExplanation)) {
 		return { kind: "requestImmediateLaymanExplanation" };
 	}
+	if (matchesBinding(data, bindings.requestImmediateUiVariations)) {
+		return { kind: "requestImmediateUiVariations" };
+	}
 	if (matchesBinding(data, bindings.requestLaymanExplanation)) {
 		return { kind: "requestLaymanExplanation" };
+	}
+	if (matchesBinding(data, bindings.requestUiVariations)) {
+		return { kind: "requestUiVariations" };
 	}
 	return;
 }

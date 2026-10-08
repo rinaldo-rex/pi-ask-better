@@ -1,3 +1,11 @@
+# Unreleased
+
+### Features
+
+* Request visual UI options with `h`, or pause for immediate HTML mockups with `Shift+H` ([#6](https://github.com/rinaldo-rex/pi-ask-better/issues/6)).
+* Send option context and notes to the agent for temporary HTML generation and browser opening, while preserving private choices and deferred requests.
+* Add conflict-safe configurable UI shortcuts with in-memory config migration to schema version 6.
+
 # 1.3.1 (2026-10-04)
 
 ### Features

@@ -3,6 +3,7 @@ import {
 	emptyAnswer,
 	isAnswerAnswered,
 	isAnswerEmpty,
+	isAnswerLocked,
 	saveCustomText,
 	saveOptionNote,
 	saveQuestionNote,
@@ -65,7 +66,8 @@ export function reduceAskState(state: AskState, action: AskAction): AskState {
 		case "MOVE_OPTION":
 			return moveOptionBase(state, action.delta);
 		case "OPEN_INPUT":
-			return state.answers[action.questionId]?.laymanRequested
+			return state.answers[action.questionId]?.laymanRequested ||
+				state.answers[action.questionId]?.uiVariationsRequested
 				? state
 				: setView(state, inputView(action.questionId));
 		case "OPEN_QUESTION_NOTE":
@@ -81,6 +83,8 @@ export function reduceAskState(state: AskState, action: AskAction): AskState {
 			return toggleCurrentMultiOption(state);
 		case "TOGGLE_LAYMAN_REQUEST":
 			return toggleLaymanRequest(state);
+		case "TOGGLE_UI_VARIATIONS_REQUEST":
+			return toggleUiVariationsRequest(state);
 		case "NUMBER_SHORTCUT":
 			return applyNumberShortcut(state, action.digit);
 		case "SAVE_INPUT":
@@ -102,6 +106,17 @@ export function toggleLaymanRequest(state: AskState): AskState {
 	return updateAnswer(state, question.id, (answer) => ({
 		...answer,
 		laymanRequested: !answer.laymanRequested || undefined,
+	}));
+}
+
+export function toggleUiVariationsRequest(state: AskState): AskState {
+	const question = getCurrentQuestion(state);
+	if (!question || state.completed || state.view.kind !== "navigate") {
+		return state;
+	}
+	return updateAnswer(state, question.id, (answer) => ({
+		...answer,
+		uiVariationsRequested: !answer.uiVariationsRequested || undefined,
 	}));
 }
 
@@ -159,7 +174,7 @@ export function applyNumberShortcut(state: AskState, digit: number): AskState {
 	}
 
 	const question = getCurrentQuestion(state);
-	if (question && state.answers[question.id]?.laymanRequested) {
+	if (question && isAnswerLocked(state.answers[question.id])) {
 		return state;
 	}
 	const index = digit - 1;
@@ -205,7 +220,7 @@ function activateCurrentOption(
 	if (!(question && option)) {
 		return state;
 	}
-	if (state.answers[question.id]?.laymanRequested) {
+	if (isAnswerLocked(state.answers[question.id])) {
 		return trigger === "confirm" ? advanceToNextTab(state) : state;
 	}
 	if (option.isCustomOption) {
@@ -264,7 +279,7 @@ function saveInputValue(
 	}
 
 	const question = getQuestionById(state, state.view.questionId);
-	if (!question || state.answers[question.id]?.laymanRequested) {
+	if (!question || isAnswerLocked(state.answers[question.id])) {
 		return exitEditingView(state);
 	}
 

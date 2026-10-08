@@ -8,7 +8,7 @@ import { AskOptionSchema } from "./schema.ts";
 import { collectValidationIssues } from "./state/normalize.ts";
 import { canPauseAsk } from "./state/pause.ts";
 import { getRenderableOptions } from "./state/selectors.ts";
-import type { AskState } from "./types.ts";
+import type { AskPauseRequest, AskState } from "./types.ts";
 
 export const ASK_PAUSED_ENTRY_TYPE = "ask:paused";
 export const ASK_PAUSE_RESOLVED_ENTRY_TYPE = "ask:pause-resolved";
@@ -17,6 +17,7 @@ export interface PausedAsk {
 	allowFreeform: boolean;
 	id: string;
 	pendingToolCallId?: string;
+	request?: AskPauseRequest;
 	state: AskState;
 	version: 1;
 }
@@ -26,12 +27,16 @@ const QuestionTypeSchema = Type.Union([
 	Type.Literal("multi"),
 	Type.Literal("preview"),
 ]);
+const PauseRequestSchema = Type.Optional(
+	Type.Union([Type.Literal("layman"), Type.Literal("uiVariations")])
+);
 const OptionalText = Type.Optional(Type.String());
 const SnapshotSchema = Type.Object({
 	version: Type.Literal(1),
 	id: Type.String({ minLength: 1 }),
 	allowFreeform: Type.Boolean(),
 	pendingToolCallId: OptionalText,
+	request: PauseRequestSchema,
 	state: Type.Object({
 		title: OptionalText,
 		activeOptionIndex: Type.Integer({ minimum: 0 }),
@@ -74,6 +79,7 @@ const SnapshotSchema = Type.Object({
 				laymanRequested: Type.Optional(Type.Boolean()),
 				note: OptionalText,
 				optionNotes: Type.Optional(Type.Record(Type.String(), Type.String())),
+				uiVariationsRequested: Type.Optional(Type.Boolean()),
 			})
 		),
 	}),

@@ -41,9 +41,15 @@ import {
 	moveTab,
 	toggleCurrentMultiOption,
 	toggleLaymanRequest,
+	toggleUiVariationsRequest,
 } from "../state/transitions.ts";
 import { isEditingView } from "../state/view.ts";
-import type { AskParams, AskResult, AskState } from "../types.ts";
+import type {
+	AskParams,
+	AskPauseRequest,
+	AskResult,
+	AskState,
+} from "../types.ts";
 import { maybeAutoSubmitState } from "./auto-submit.ts";
 import { createAskAutocompleteProvider } from "./autocomplete.ts";
 import {
@@ -323,7 +329,9 @@ function handleNavigationCommand(
 			return;
 		case "requestLaymanExplanation":
 		case "requestImmediateLaymanExplanation":
-			handleExplanationRequest(controller, command.kind);
+		case "requestUiVariations":
+		case "requestImmediateUiVariations":
+			handleRequestInput(controller, command.kind);
 			return;
 		case "changeQuestionType":
 			clearReviewShortcutPending(controller);
@@ -369,26 +377,22 @@ function handleNavigationCommand(
 		case "showSettings":
 			showSettingsModal(controller);
 			return;
-		case "ignore":
-		case "editMoveTab":
-		case "editMoveOption":
-		case "editClose":
-		case "editSubmit":
-		case "delegateToEditor":
-			return;
 		default:
 			return;
 	}
 }
 
-function handleImmediateLaymanRequest(controller: AskFlowController) {
+function handleImmediateRequest(
+	controller: AskFlowController,
+	request: AskPauseRequest
+) {
 	if (!canPauseAsk(controller.state)) {
 		return;
 	}
 	const pause = controller.flowOptions.pause;
 	if (!pause) {
 		controller.dismissNotice =
-			"Immediate explanation is unavailable in this ask flow.";
+			"An immediate pause is unavailable in this ask flow.";
 		refresh(controller);
 		return;
 	}
@@ -396,6 +400,7 @@ function handleImmediateLaymanRequest(controller: AskFlowController) {
 		const result = pause.save(
 			controller.ctx,
 			controller.state,
+			request,
 			controller.flowOptions.allowFreeform,
 			controller.flowOptions.pendingToolCallId
 		);
@@ -406,17 +411,29 @@ function handleImmediateLaymanRequest(controller: AskFlowController) {
 	}
 }
 
-function handleExplanationRequest(
+function handleRequestInput(
 	controller: AskFlowController,
-	kind: "requestLaymanExplanation" | "requestImmediateLaymanExplanation"
+	kind:
+		| "requestLaymanExplanation"
+		| "requestImmediateLaymanExplanation"
+		| "requestUiVariations"
+		| "requestImmediateUiVariations"
 ) {
 	if (kind === "requestImmediateLaymanExplanation") {
-		handleImmediateLaymanRequest(controller);
+		handleImmediateRequest(controller, "layman");
+		return;
+	}
+	if (kind === "requestImmediateUiVariations") {
+		handleImmediateRequest(controller, "uiVariations");
 		return;
 	}
 	clearReviewShortcutPending(controller);
 	clearQuestionTypeChangePending(controller);
-	commitState(controller, toggleLaymanRequest(controller.state), {
+	const toggle =
+		kind === "requestLaymanExplanation"
+			? toggleLaymanRequest
+			: toggleUiVariationsRequest;
+	commitState(controller, toggle(controller.state), {
 		finish: true,
 	});
 }

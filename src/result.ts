@@ -14,7 +14,15 @@ export function renderResultText(result: AskResult): string {
 		return CANCELLED_RESULT_TEXT;
 	}
 	if (result.mode === "pause") {
-		return `Paused for immediate explanation: ${result.questions.find((question) => question.id === result.pause?.questionId)?.label ?? "question"}. Answers and notes saved.`;
+		const label =
+			result.questions.find(
+				(question) => question.id === result.pause?.questionId
+			)?.label ?? "question";
+		const reason =
+			result.pause?.request === "uiVariations"
+				? "Paused for immediate UI variation mockups"
+				: "Paused for immediate explanation";
+		return `${reason}: ${label}. Answers and notes saved.`;
 	}
 	if (result.mode === "elaborate") {
 		const lines = formatElaborationLines(result, { mode: "render" });

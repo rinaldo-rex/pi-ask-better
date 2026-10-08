@@ -183,6 +183,43 @@ function harness() {
 	};
 }
 
+test("Shift+H hands off only the current mockup request and restores the saved form", {
+	timeout: 5000,
+}, async () => {
+	const h = harness();
+	const ask = h.execute("ask_user", params);
+	await h.waitForOpen();
+	h.key("h"); // Defer first question's mockups.
+	h.key("\t");
+	h.key("H"); // Generate second question's mockups now.
+	const paused = await ask;
+	assert.equal(paused.details.pause.request, "uiVariations");
+	assert.deepEqual(
+		paused.details.uiVariations.questions.map((q: { id: string }) => q.id),
+		["second"]
+	);
+	assert.equal(paused.details.laymanExplanation, undefined);
+	const saved = findPausedAsk(h.ctx as never);
+	assert(saved);
+	assert.equal(saved.request, "uiVariations");
+	assert.equal(saved.state.answers.first.uiVariationsRequested, true);
+	h.prepareNextOpen();
+	const resumed = h.execute("resume_ask_user", { pauseId: saved.id });
+	await h.waitForOpen();
+	assert(h.render().includes("Choose second"));
+	h.key("2");
+	h.key("1");
+	h.key("\r");
+	const result = await resumed;
+	assert.deepEqual(result.details.answers.second.values, ["b"]);
+	assert.deepEqual(result.details.answers.third.values, ["a"]);
+	assert.deepEqual(
+		result.details.uiVariations.questions.map((q: { id: string }) => q.id),
+		["first"]
+	);
+	assert.equal(findPausedAsk(h.ctx as never), undefined);
+});
+
 test("Shift+L yields the tool immediately and resume restores answers, notes and the active tab", async () => {
 	const h = harness();
 	const ask = h.execute("ask_user", params);

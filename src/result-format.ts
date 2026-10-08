@@ -10,9 +10,7 @@ export function formatResultLines(
 
 	let hasPresentationOverride = false;
 
-	const requestedIds = new Set(
-		result.laymanExplanation?.questions.map((question) => question.id)
-	);
+	const requestedIds = getRequestedQuestionIds(result);
 	for (const question of result.questions) {
 		if (requestedIds.has(question.id)) {
 			continue;
@@ -49,14 +47,27 @@ export function formatResultLines(
 	}
 
 	lines.push(...formatLaymanExplanationLines(result));
+	lines.push(...formatUiVariationsLines(result));
 	return lines;
 }
 
+function getRequestedQuestionIds(result: AskResult): Set<string> {
+	return new Set([
+		...(result.laymanExplanation?.questions.map((question) => question.id) ??
+			[]),
+		...(result.uiVariations?.questions.map((question) => question.id) ?? []),
+	]);
+}
+
 export function formatPauseResult(result: AskResult): string {
+	const uiVariations = result.pause?.request === "uiVariations";
+	const followUp = uiVariations
+		? `After generating the UI variation mockups, call resume_ask_user({ pauseId: ${JSON.stringify(result.pause?.id)} }).`
+		: `After explaining, call resume_ask_user({ pauseId: ${JSON.stringify(result.pause?.id)} }).`;
 	return [
 		"Questionnaire paused, not submitted or cancelled. Other answers below are preserved context, not permission to proceed.",
 		...formatResultLines(result, { mode: "summary" }),
-		`After explaining, call resume_ask_user({ pauseId: ${JSON.stringify(result.pause?.id)} }). The saved form resumes at question ${JSON.stringify(result.pause?.questionId)}; all other drafts, notes, and deferred l requests remain saved.`,
+		`${followUp} The saved form resumes at question ${JSON.stringify(result.pause?.questionId)}; all other drafts, notes, and deferred l and h requests remain saved.`,
 	].join("\n");
 }
 
@@ -68,6 +79,29 @@ function formatLaymanExplanationLines(result: AskResult): string[] {
 	const lines = request.questions.flatMap((question) => {
 		const context = [
 			`User requested a layman explanation for question ${quote(question.prompt)} (id: ${quote(question.id)}).`,
+		];
+		for (const option of question.options) {
+			context.push(
+				...formatLaymanOption(option, question.optionNotes?.[option.value])
+			);
+		}
+		if (question.note) {
+			context.push(`  User note: ${question.note}`);
+		}
+		return context;
+	});
+	lines.push(request.instruction);
+	return lines;
+}
+
+function formatUiVariationsLines(result: AskResult): string[] {
+	const request = result.uiVariations;
+	if (!request) {
+		return [];
+	}
+	const lines = request.questions.flatMap((question) => {
+		const context = [
+			`User requested UI variation mockups for question ${quote(question.prompt)} (id: ${quote(question.id)}).`,
 		];
 		for (const option of question.options) {
 			context.push(
@@ -165,7 +199,7 @@ export function formatElaborationLines(
 		return `User asked to elaborate on question ${quote(item.question.prompt)} option ${quote(item.option.label)}${answerContext} with note ${quote(item.note)}`;
 	});
 
-	if (result.laymanExplanation) {
+	if (result.laymanExplanation || result.uiVariations) {
 		return [...formatResultLines(result, options), ...lines];
 	}
 	if (lines.length > 0) {

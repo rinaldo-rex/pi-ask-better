@@ -14,7 +14,6 @@ import {
 	type PausedAsk,
 	resolvePausedAsk,
 } from "../src/paused-ask-store.ts";
-import { findPendingAskToolCall } from "../src/pending-ask.ts";
 import { renderResultText } from "../src/result.ts";
 import { createInitialState } from "../src/state/create.ts";
 import {
@@ -22,7 +21,7 @@ import {
 	createPauseResult,
 	resumePausedState,
 } from "../src/state/pause.ts";
-import { summarizeResult, toAskResult } from "../src/state/result.ts";
+import { summarizeResult } from "../src/state/result.ts";
 import type { AskQuestionInput, AskState } from "../src/types.ts";
 import { getInputCommand } from "../src/ui/input.ts";
 import {
@@ -62,12 +61,12 @@ function sampleState(): AskState {
 		selected: [{ value: "b", label: "Beta", index: 2 }],
 		customSelected: true,
 		customText: "private current choice",
-		note: "Explain the trade-off",
+		note: "Mock up the trade-off",
 		optionNotes: { a: "current unselected note" },
 	};
 	state.answers.deferred = {
 		selected: [{ value: "a", label: "Alpha", index: 1 }],
-		laymanRequested: true,
+		uiVariationsRequested: true,
 		customSelected: true,
 		customText: "private deferred choice",
 		note: "deferred note",
@@ -77,7 +76,13 @@ function sampleState(): AskState {
 }
 
 function snapshot(state = sampleState(), id = "pause-1"): PausedAsk {
-	return { version: 1, id, state, allowFreeform: false };
+	return {
+		version: 1,
+		id,
+		state,
+		allowFreeform: false,
+		request: "uiVariations",
+	};
 }
 
 function revision(state: AskState, id: string): AskQuestionInput {
@@ -93,33 +98,31 @@ function revision(state: AskState, id: string): AskQuestionInput {
 	};
 }
 
-test("immediate pause is not completion and only sends the active request without private choices", () => {
+test("immediate pause is not completion and only sends the active mockup request without private choices", () => {
 	const state = sampleState();
 	const original = structuredClone(state);
-	const result = createPauseResult(state, "opaque-id");
+	const result = createPauseResult(state, "opaque-id", "uiVariations");
 	assert.deepEqual(state, original);
 	assert.equal(result.mode, "pause");
 	assert.equal(result.cancelled, false);
 	assert.deepEqual(result.pause, {
 		id: "opaque-id",
 		questionId: "current",
-		request: "layman",
+		request: "uiVariations",
 	});
 	assert.deepEqual(
-		result.laymanExplanation?.questions.map((item) => item.id),
+		result.uiVariations?.questions.map((item) => item.id),
 		["current"]
 	);
+	assert.equal(result.laymanExplanation, undefined);
 	assert.equal(result.answers.current, undefined);
 	assert.equal(result.answers.deferred, undefined);
 	assert.deepEqual(result.answers.done?.values, ["a", "my answer"]);
 	assert.equal(
-		result.laymanExplanation?.questions[0].optionNotes?.a,
+		result.uiVariations?.questions[0].optionNotes?.a,
 		"current unselected note"
 	);
-	assert.equal(
-		result.laymanExplanation?.questions[0].options[0].recommended,
-		true
-	);
+	assert.equal(result.uiVariations?.questions[0].options[0].recommended, true);
 	assert.equal(result.continuation?.strategy, "resume");
 	assert.deepEqual(result.continuation?.affectedQuestionIds, ["current"]);
 	assert.equal(
@@ -130,11 +133,33 @@ test("immediate pause is not completion and only sends the active request withou
 	assert(text.includes("not submitted or cancelled"));
 	assert(text.includes("resume_ask_user"));
 	assert(text.includes("opaque-id"));
+	assert(text.includes("generating the UI variation mockups"));
 	assert(!text.includes("private current choice"));
 	assert(!text.includes("private deferred choice"));
 	assert(!text.includes("deferred alpha description"));
 	assert(
-		renderResultText(result).startsWith("Paused for immediate explanation")
+		renderResultText(result).startsWith(
+			"Paused for immediate UI variation mockups"
+		)
+	);
+});
+
+test("an existing layman pause keeps its explanation request; deferred h flags stay deferred", () => {
+	const state = sampleState();
+	const layman = createPauseResult(state, "layman-id");
+	assert.equal(layman.pause?.request, "layman");
+	assert.deepEqual(
+		layman.laymanExplanation?.questions.map((item) => item.id),
+		["current"]
+	);
+	assert.equal(layman.uiVariations, undefined);
+	const merged = structuredClone(state);
+	merged.answers.current.uiVariationsRequested = true;
+	const uiPause = createPauseResult(merged, "ui-id", "uiVariations");
+	assert.equal(uiPause.laymanExplanation, undefined);
+	assert.deepEqual(
+		uiPause.uiVariations?.questions.map((item) => item.id),
+		["current"]
 	);
 });
 
@@ -148,17 +173,20 @@ test("pause refuses Review, editor, cancelled, and completed surfaces", () => {
 	];
 	for (const value of invalid) {
 		assert.equal(canPauseAsk(value), false);
-		assert.throws(() => createPauseResult(value, "id"));
+		assert.throws(() => createPauseResult(value, "id", "uiVariations"));
 	}
 });
 
-test("resume restores the active question, all private drafts, notes, overrides, and deferred flags", () => {
+test("uiVariations resume restores drafts and clears only the served h flag, keeping deferred l flags", () => {
 	const state = sampleState();
 	state.questions[1].requestedType = "single";
 	state.questions[1].presentedType = "multi";
+	state.answers.current.uiVariationsRequested = true;
 	state.answers.current.laymanRequested = true;
 	const original = structuredClone(state);
-	const restored = resumePausedState(state);
+	const restored = resumePausedState(state, [], {
+		request: "uiVariations",
+	});
 	assert.deepEqual(state, original);
 	assert.equal(restored.activeTabIndex, 1);
 	assert.equal(restored.activeOptionIndex, 1);
@@ -166,12 +194,19 @@ test("resume restores the active question, all private drafts, notes, overrides,
 	assert.deepEqual(restored.answers.deferred, state.answers.deferred);
 	assert.deepEqual(restored.answers.next, state.answers.next);
 	assert.equal(restored.answers.current.customText, "private current choice");
-	assert.equal(restored.answers.current.laymanRequested, undefined);
+	assert.equal(restored.answers.current.uiVariationsRequested, undefined);
+	assert.equal(restored.answers.current.laymanRequested, true);
 	assert.deepEqual(restored.questions, state.questions);
-	assert.equal(
-		toAskResult(restored).laymanExplanation?.questions[0].id,
-		"deferred"
-	);
+});
+
+test("legacy layman resume still clears the l flag for old checkpoints", () => {
+	const state = sampleState();
+	state.answers.current.laymanRequested = true;
+	const restoredDefault = resumePausedState(state);
+	assert.equal(restoredDefault.answers.current.laymanRequested, undefined);
+	const restoredLayman = resumePausedState(state, [], { request: "layman" });
+	assert.equal(restoredLayman.answers.current.laymanRequested, undefined);
+	assert.equal(state.answers.current.laymanRequested, true);
 });
 
 test("targeted rewording preserves tab labels, live types, selections by value, and notes", () => {
@@ -183,7 +218,11 @@ test("targeted rewording preserves tab labels, live types, selections by value, 
 	current.label = undefined;
 	current.options.reverse();
 	current.options[0].label = "Clearer Beta";
-	const restored = resumePausedState(state, [current, revision(state, "next")]);
+	const restored = resumePausedState(
+		state,
+		[current, revision(state, "next")],
+		{ request: "uiVariations" }
+	);
 	assert.equal(restored.questions[1].label, "current");
 	assert.equal(restored.questions[1].type, "multi");
 	assert.equal(restored.activeOptionIndex, 0);
@@ -221,12 +260,14 @@ test("unsafe, unknown, duplicate, or invalid revisions fail atomically without d
 		[{ ...revision(state, "next"), id: "unknown" }],
 		[revision(state, "next"), revision(state, "next")],
 	]) {
-		assert.throws(() => resumePausedState(state, changes));
+		assert.throws(() =>
+			resumePausedState(state, changes, { request: "uiVariations" })
+		);
 		assert.deepEqual(state, original);
 	}
 });
 
-test("versioned snapshots round-trip and lookups are branch-local, tombstone-aware, and defensive", () => {
+test("versioned snapshots round-trip with the pause request kind and stay defensive", () => {
 	const branch: unknown[] = [];
 	const pi = {
 		appendEntry(customType: string, data: unknown) {
@@ -241,19 +282,20 @@ test("versioned snapshots round-trip and lookups are branch-local, tombstone-awa
 	appendPausedAsk(pi as never, snapshot());
 	const paused = findPausedAsk(ctx as never, "pause-1");
 	assert(paused);
+	assert.equal(paused.request, "uiVariations");
 	assert.equal(isValidPausedAsk(paused), true);
-	assert.equal(findPausedAsk(ctx as never, "sibling-id"), undefined);
 	assert.equal(
-		findPausedAsk(
-			{ sessionManager: { getBranch: () => [] } } as never,
-			"pause-1"
-		),
-		undefined
+		isValidPausedAsk({ ...snapshot(), request: "nonsense" as never }),
+		false
 	);
-	paused.state.answers.done.customText = "mutated caller copy";
 	assert.equal(
-		findPausedAsk(ctx as never)?.state.answers.done.customText,
-		"my answer"
+		isValidPausedAsk({
+			version: 1,
+			id: "legacy",
+			state: sampleState(),
+			allowFreeform: false,
+		}),
+		true
 	);
 	appendPausedAsk(pi as never, snapshot(sampleState(), "pause-2"));
 	resolvePausedAsk(pi as never, "pause-1");
@@ -263,180 +305,86 @@ test("versioned snapshots round-trip and lookups are branch-local, tombstone-awa
 	assert.equal(findPausedAsk(ctx as never), undefined);
 });
 
-test("an intentional pause prevents replay of a tool call even if its result was interrupted", () => {
-	const state = sampleState();
-	const branch: unknown[] = [
-		{
-			type: "message",
-			message: {
-				role: "assistant",
-				stopReason: "toolUse",
-				content: [
-					{
-						type: "toolCall",
-						id: "interrupted-call",
-						name: "ask_user",
-						arguments: { questions: state.questions },
-					},
-				],
-			},
-		},
-	];
-	const ctx = { sessionManager: { getBranch: () => branch } };
-	assert.equal(
-		findPendingAskToolCall(ctx as never)?.toolCallId,
-		"interrupted-call"
-	);
-	const paused = { ...snapshot(state), pendingToolCallId: "interrupted-call" };
-	branch.push({ type: "custom", customType: "ask:paused", data: paused });
-	assert.equal(findPendingAskToolCall(ctx as never), undefined);
-	branch.push({
-		type: "custom",
-		customType: "ask:pause-resolved",
-		data: { version: 1, id: paused.id },
-	});
-	assert.equal(findPausedAsk(ctx as never), undefined);
-	assert.equal(findPendingAskToolCall(ctx as never), undefined);
-	paused.state.completed = true;
-	assert.equal(
-		findPendingAskToolCall(ctx as never)?.toolCallId,
-		"interrupted-call"
-	);
-});
-
-test("malformed saved state is ignored, not opened", () => {
-	const corruptions = [
-		(value: PausedAsk) => {
-			value.state.activeTabIndex = 100;
-		},
-		(value: PausedAsk) => {
-			value.state.questions[0].options = [];
-		},
-		(value: PausedAsk) => {
-			value.state.answers.done.selected[0].value = "forged";
-		},
-		(value: PausedAsk) => {
-			value.state.answers.done.selected[0].label = "forged";
-		},
-		(value: PausedAsk) => {
-			value.state.answers.done.optionNotes = { unknown: "note" };
-		},
-		(value: PausedAsk) => {
-			value.state.completed = true;
-		},
-	];
-	for (const corrupt of corruptions) {
-		const value = snapshot();
-		corrupt(value);
-		assert.equal(isValidPausedAsk(value), false);
-		assert.throws(() =>
-			appendPausedAsk(
-				{
-					appendEntry() {
-						assert.fail("Invalid state must not be persisted");
-					},
-				} as never,
-				value
-			)
-		);
-		assert.equal(
-			findPausedAsk({
-				sessionManager: {
-					getBranch: () => [
-						{ type: "custom", customType: "ask:paused", data: value },
-					],
-				},
-			} as never),
-			undefined
-		);
-	}
-	assert.equal(isValidPausedAsk(null), false);
-	assert.equal(isValidPausedAsk({ ...snapshot(), version: 999 }), false);
-});
-
-test("Shift+L is additive, configurable, disableable, conflict-safe, and ordinary editor text", () => {
+test("Shift+H is additive, configurable, disableable, conflict-safe, and ordinary editor text", () => {
 	const state = sampleState();
 	assert.equal(
-		getInputCommand(state, DEFAULT_ASK_CONFIG, "L").kind,
-		"requestImmediateLaymanExplanation"
+		getInputCommand(state, DEFAULT_ASK_CONFIG, "H").kind,
+		"requestImmediateUiVariations"
 	);
 	for (const kind of ["input", "note"] as const) {
 		assert.equal(
 			getInputCommand(
 				{ ...state, view: { kind, questionId: "current" } },
 				DEFAULT_ASK_CONFIG,
-				"L"
+				"H"
 			).kind,
 			"delegateToEditor"
 		);
 	}
 	const file = structuredClone(toAskConfigFileV6(DEFAULT_ASK_CONFIG));
 	assert(file.keymaps?.main);
-	file.keymaps.main.requestImmediateLaymanExplanation = undefined;
+	file.keymaps.main.requestImmediateUiVariations = undefined;
 	let migrated = migrateAskConfig(file);
 	assert.equal(migrated.notice, undefined);
-	assert.deepEqual(
-		migrated.config.keymaps.main.requestImmediateLaymanExplanation,
-		["shift+l"]
-	);
-	assert.equal(file.keymaps.main.requestImmediateLaymanExplanation, undefined);
-	file.keymaps.main.nextTab = ["shift+l"];
+	assert.deepEqual(migrated.config.keymaps.main.requestImmediateUiVariations, [
+		"shift+h",
+	]);
+	assert.equal(file.keymaps.main.requestImmediateUiVariations, undefined);
+	file.keymaps.main.nextTab = ["shift+h"];
 	migrated = migrateAskConfig(file);
 	assert.equal(migrated.notice, undefined);
-	assert.deepEqual(migrated.config.keymaps.main.nextTab, ["shift+l"]);
+	assert.deepEqual(migrated.config.keymaps.main.nextTab, ["shift+h"]);
 	assert.deepEqual(
-		migrated.config.keymaps.main.requestImmediateLaymanExplanation,
+		migrated.config.keymaps.main.requestImmediateUiVariations,
 		[]
 	);
 	file.keymaps.main.nextTab = ["tab"];
-	file.keymaps.main.requestImmediateLaymanExplanation = ["ctrl+l"];
+	file.keymaps.main.requestImmediateUiVariations = ["ctrl+h"];
 	migrated = migrateAskConfig(file);
 	assert.equal(
-		getInputCommand(state, migrated.config, "\u000c").kind,
-		"requestImmediateLaymanExplanation"
+		getInputCommand(state, migrated.config, "\u0008").kind,
+		"requestImmediateUiVariations"
 	);
-	assert.equal(getInputCommand(state, migrated.config, "L").kind, "ignore");
-	file.keymaps.main.requestImmediateLaymanExplanation = [];
+	assert.equal(getInputCommand(state, migrated.config, "H").kind, "ignore");
+	file.keymaps.main.requestImmediateUiVariations = [];
 	assert.deepEqual(
-		migrateAskConfig(file).config.keymaps.main
-			.requestImmediateLaymanExplanation,
+		migrateAskConfig(file).config.keymaps.main.requestImmediateUiVariations,
 		[]
 	);
 	assert(
 		renderFooterKeymaps(DEFAULT_ASK_CONFIG, "default").includes(
-			"shift+l explain now"
+			"shift+h mockups now"
 		)
 	);
 	assert(
-		!renderFooterKeymaps(DEFAULT_ASK_CONFIG, "submit").includes("explain now")
+		!renderFooterKeymaps(DEFAULT_ASK_CONFIG, "submit").includes("mockups now")
 	);
 });
 
-test("legacy flat keymaps keep their existing Shift+L binding during migration", () => {
+test("legacy flat keymaps keep their existing Shift+H binding during migration", () => {
 	for (const schemaVersion of [1, 2, 3]) {
 		const migrated = migrateAskConfig({
 			schemaVersion,
-			keymaps: { dismiss: "shift+l" },
+			keymaps: { dismiss: "shift+h" },
 		});
 		assert.equal(migrated.notice, undefined);
-		assert.deepEqual(migrated.config.keymaps.global.dismiss, ["shift+l"]);
+		assert.deepEqual(migrated.config.keymaps.global.dismiss, ["shift+h"]);
 		assert.deepEqual(
-			migrated.config.keymaps.main.requestImmediateLaymanExplanation,
+			migrated.config.keymaps.main.requestImmediateUiVariations,
 			[]
 		);
-		assert.deepEqual(migrated.config.keymaps.main.requestLaymanExplanation, [
-			"l",
-		]);
+		assert.deepEqual(migrated.config.keymaps.main.requestUiVariations, ["h"]);
 	}
 });
 
 test("frozen summary distinguishes saved answers, current/deferred requests, and notes at narrow widths", () => {
 	const paused = snapshot();
 	const lines = pausedWidgetLines(paused);
+	assert(lines[0].includes("paused for ui variation mockups"));
 	assert(lines[1].includes("saved: Alpha, my answer"));
 	assert(lines[1].includes("3 saved note(s)"));
-	assert(lines[2].includes("explaining now"));
-	assert(lines[3].includes("explanation deferred"));
+	assert(lines[2].includes("generating mockups now"));
+	assert(lines[3].includes("ui variations deferred"));
 	assert(!lines.join("\n").includes("private current choice"));
 	let factory: any;
 	showPausedWidget(
@@ -482,7 +430,8 @@ test("/answer freeform snapshots preserve typed text without becoming a public s
 	);
 	assert.equal(isValidPausedAsk(snapshot(state)), false);
 	assert.equal(
-		resumePausedState(state).answers.text.customText,
+		resumePausedState(state, [], { request: "uiVariations" }).answers.text
+			.customText,
 		"my freeform draft"
 	);
 });

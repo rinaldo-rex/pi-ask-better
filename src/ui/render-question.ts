@@ -4,7 +4,7 @@ import {
 	visibleWidth,
 	wrapTextWithAnsi,
 } from "@earendil-works/pi-tui";
-import { LAYMAN_REQUEST_NOTICE } from "../constants/text.ts";
+import { getRequestNotice } from "../constants/text.ts";
 import { UI_DIMENSIONS, UI_TEXT } from "../constants/ui.ts";
 import {
 	measurePreviewLeftWidth,
@@ -28,17 +28,9 @@ export function renderQuestionScreen(context: QuestionRenderContext) {
 	pushWrappedText(lines, question.prompt, width, theme, "text", " ", " ");
 	renderQuestionNote(lines, model.questionNote, context);
 
-	const requested = context.state.answers[question.id]?.laymanRequested;
-	if (requested) {
-		pushWrappedText(
-			lines,
-			LAYMAN_REQUEST_NOTICE,
-			width,
-			theme,
-			"warning",
-			" ",
-			" "
-		);
+	const notice = getRequestNotice(context.state.answers[question.id]);
+	if (notice) {
+		pushWrappedText(lines, notice, width, theme, "warning", " ", " ");
 		lines.push("");
 	}
 
@@ -53,7 +45,7 @@ export function renderQuestionScreen(context: QuestionRenderContext) {
 	}
 	lines.push(
 		...choiceLines.map((line) =>
-			requested ? theme.fg("dim", stripTerminalSequences(line)) : line
+			notice ? theme.fg("dim", stripTerminalSequences(line)) : line
 		)
 	);
 }

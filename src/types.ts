@@ -1,5 +1,7 @@
 export type AskQuestionType = "single" | "multi" | "preview";
 
+export type AskPauseRequest = "layman" | "uiVariations";
+
 export interface AskOption {
 	description?: string;
 	freeform?: boolean;
@@ -55,6 +57,7 @@ export interface AskStateAnswer {
 	note?: string;
 	optionNotes?: Record<string, string>;
 	selected: AskSelectedOption[];
+	uiVariationsRequested?: boolean;
 }
 
 export interface AskResultAnswer {
@@ -133,6 +136,16 @@ export interface AskLaymanExplanationPayload {
 	questions: AskLaymanExplanationQuestion[];
 }
 
+export interface AskUiVariationsQuestion extends AskElaborationQuestionContext {
+	note?: string;
+	optionNotes?: Record<string, string>;
+}
+
+export interface AskUiVariationsPayload {
+	instruction: string;
+	questions: AskUiVariationsQuestion[];
+}
+
 export interface AskResult {
 	answers: Record<string, AskResultAnswer>;
 	cancelled: boolean;
@@ -141,9 +154,10 @@ export interface AskResult {
 	error?: AskValidationError;
 	laymanExplanation?: AskLaymanExplanationPayload;
 	mode: "submit" | "elaborate" | "pause";
-	pause?: { id: string; questionId: string };
+	pause?: { id: string; questionId: string; request?: AskPauseRequest };
 	questions: AskQuestionSummary[];
 	title?: string;
+	uiVariations?: AskUiVariationsPayload;
 }
 
 export type ViewState =
@@ -179,6 +193,7 @@ export type AskAction =
 	| { type: "CONFIRM" }
 	| { type: "TOGGLE_MULTI" }
 	| { type: "TOGGLE_LAYMAN_REQUEST" }
+	| { type: "TOGGLE_UI_VARIATIONS_REQUEST" }
 	| { type: "NUMBER_SHORTCUT"; digit: number }
 	| { type: "SAVE_INPUT"; value: string; submit?: boolean }
 	| { type: "SAVE_NOTE"; value: string }

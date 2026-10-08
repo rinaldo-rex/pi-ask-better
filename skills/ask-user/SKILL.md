@@ -51,7 +51,7 @@ Also use `ask_user` when the user asks to gather requirements, interview them, a
 
 ## Immediate explanation handoffs
 
-When `ask_user` or `resume_ask_user` returns `mode: "pause"`, the user pressed `Shift+L` to understand the active question before continuing. Explain every option and its differences in everyday language in normal chat, with concrete examples. Treat other answers as preserved context, not final permission to proceed. Do not flush deferred `l` requests or construct a new questionnaire.
+When `ask_user` or `resume_ask_user` returns `mode: "pause"`, handle only the active request before continuing. `pause.request: "uiVariations"` means `Shift+H`: generate temporary HTML mockups of the question's existing options only, one mockup per option, and open the page in the default browser. `pause.request: "layman"` (or a legacy pause without a request kind) means `Shift+L`: explain every option and its differences in everyday language in normal chat, with concrete examples. Treat other answers as preserved context, not final permission to proceed. Do not flush deferred `l` or `h` requests or construct a new questionnaire.
 
 Then call `resume_ask_user` with `pause.id`. Saved answers, notes, custom text, presentation overrides, and other flags are restored automatically. If clarification changes the current or unanswered questions, supply only those targeted replacements using existing question ids; retain selected/noted option values and never replace other answered questions. Put concrete examples in revised descriptions or previews where useful.
 

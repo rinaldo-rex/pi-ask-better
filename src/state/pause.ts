@@ -1,4 +1,5 @@
 import type {
+	AskPauseRequest,
 	AskQuestion,
 	AskQuestionInput,
 	AskResult,
@@ -19,32 +20,54 @@ export function canPauseAsk(state: AskState): boolean {
 	);
 }
 
-export function createPauseResult(state: AskState, pauseId: string): AskResult {
+const IMMEDIATE_LAYMAN_INSTRUCTION =
+	"Explain only the immediate question now in everyday language. Explain every option and its differences with concrete inline examples. Do not act on draft answers or flush deferred explanation or UI variation requests. Then call resume_ask_user with the pauseId to restore the saved questionnaire, optionally revising only the current or unanswered questions. Do not start a new ask_user batch.";
+
+const IMMEDIATE_UI_VARIATIONS_INSTRUCTION =
+	"Generate only the immediate question now as a temporary HTML page of side-by-side visual mockups: one mockup per option, options only, no extra designs. Write it to a temp file and open it in the default browser. Do not act on draft answers or flush deferred explanation or UI variation requests. Then call resume_ask_user with the pauseId to restore the saved questionnaire, optionally revising only the current or unanswered questions. Do not start a new ask_user batch.";
+
+export function createPauseResult(
+	state: AskState,
+	pauseId: string,
+	request: AskPauseRequest = "layman"
+): AskResult {
 	if (!canPauseAsk(state)) {
-		throw new Error(
-			"Only an active question can request immediate explanation."
-		);
+		throw new Error("Only an active question can request an immediate pause.");
 	}
 	const question = state.questions[state.activeTabIndex];
 	const requestedState = structuredClone(state);
 	requestedState.answers[question.id] = {
 		...requestedState.answers[question.id],
 		selected: requestedState.answers[question.id]?.selected ?? [],
-		laymanRequested: true,
+		laymanRequested: request === "layman" ? true : undefined,
+		uiVariationsRequested: request === "uiVariations" ? true : undefined,
 	};
 	const result = toAskResult(requestedState);
+	const pause = { id: pauseId, questionId: question.id, request };
 	return {
 		...result,
 		mode: "pause",
-		pause: { id: pauseId, questionId: question.id },
-		laymanExplanation: {
-			instruction:
-				"Explain only the immediate question now in everyday language. Explain every option and its differences with concrete inline examples. Do not act on draft answers or flush deferred explanation requests. Then call resume_ask_user with the pauseId to restore the saved questionnaire, optionally revising only the current or unanswered questions. Do not start a new ask_user batch.",
-			questions:
-				result.laymanExplanation?.questions.filter(
-					(item) => item.id === question.id
-				) ?? [],
-		},
+		pause,
+		laymanExplanation:
+			request === "layman"
+				? {
+						instruction: IMMEDIATE_LAYMAN_INSTRUCTION,
+						questions:
+							result.laymanExplanation?.questions.filter(
+								(item) => item.id === question.id
+							) ?? [],
+					}
+				: undefined,
+		uiVariations:
+			request === "uiVariations"
+				? {
+						instruction: IMMEDIATE_UI_VARIATIONS_INSTRUCTION,
+						questions:
+							result.uiVariations?.questions.filter(
+								(item) => item.id === question.id
+							) ?? [],
+					}
+				: undefined,
 		continuation: result.continuation
 			? {
 					...result.continuation,
@@ -58,7 +81,7 @@ export function createPauseResult(state: AskState, pauseId: string): AskResult {
 export function resumePausedState(
 	state: AskState,
 	revisions: AskQuestionInput[] = [],
-	options: { allowFreeform?: boolean } = {}
+	options: { allowFreeform?: boolean; request?: AskPauseRequest } = {}
 ): AskState {
 	if (!canPauseAsk(state)) {
 		throw new Error(
@@ -85,7 +108,11 @@ export function resumePausedState(
 		applyRevision(next, question, activeId);
 	}
 	if (next.answers[activeId]) {
-		next.answers[activeId].laymanRequested = undefined;
+		if (options.request === "uiVariations") {
+			next.answers[activeId].uiVariationsRequested = undefined;
+		} else {
+			next.answers[activeId].laymanRequested = undefined;
+		}
 	}
 	const activeOption =
 		state.questions[state.activeTabIndex].options[state.activeOptionIndex];

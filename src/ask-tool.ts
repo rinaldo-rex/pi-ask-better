@@ -73,7 +73,9 @@ async function executeAskTool(
 	const paused = pause && ctx.mode === "tui" ? findPausedAsk(ctx) : undefined;
 	if (paused) {
 		return {
-			...successfulResponse(createPauseResult(paused.state, paused.id)),
+			...successfulResponse(
+				createPauseResult(paused.state, paused.id, paused.request ?? "layman")
+			),
 			isError: true,
 		};
 	}

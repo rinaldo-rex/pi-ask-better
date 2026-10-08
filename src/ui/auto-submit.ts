@@ -1,5 +1,5 @@
 import type { AskConfig } from "../config/schema.ts";
-import { hasAnswerNotes } from "../state/answers.ts";
+import { hasAnswerNotes, isAnswerLocked } from "../state/answers.ts";
 import { isQuestionAnswered, isSubmitTab } from "../state/selectors.ts";
 import type { AskState } from "../types.ts";
 
@@ -27,7 +27,7 @@ export function shouldAutoSubmit(state: AskState, config: AskConfig): boolean {
 	for (const question of state.questions) {
 		if (
 			!(
-				state.answers[question.id]?.laymanRequested ||
+				isAnswerLocked(state.answers[question.id]) ||
 				isQuestionAnswered(state, question.id)
 			)
 		) {

@@ -61,7 +61,7 @@ const AskConfigKeymapsV4Schema = Type.Object({
 	}),
 });
 
-const AskConfigKeymapsSchema = Type.Object({
+const AskConfigKeymapsV5Schema = Type.Object({
 	global: Type.Object({
 		dismiss: Type.Optional(AskKeyBindingSchema),
 		settings: Type.Optional(AskKeyBindingSchema),
@@ -124,13 +124,30 @@ export const AskConfigFileV5Schema = Type.Object({
 			showFooterHints: Type.Optional(Type.Boolean()),
 		})
 	),
-	keymaps: Type.Optional(AskConfigKeymapsSchema),
+	keymaps: Type.Optional(AskConfigKeymapsV5Schema),
 	notifications: Type.Optional(
 		Type.Object({
 			channels: Type.Optional(Type.Array(AskNotificationChannelSchema)),
 			enabled: Type.Optional(Type.Boolean()),
 		})
 	),
+});
+
+const AskConfigKeymapsSchema = Type.Object({
+	...AskConfigKeymapsV5Schema.properties,
+	main: Type.Object({
+		...AskConfigKeymapsV5Schema.properties.main.properties,
+		requestUiVariations: Type.Optional(AskKeyBindingSchema),
+		requestImmediateUiVariations: Type.Optional(AskKeyBindingSchema),
+	}),
+});
+
+export const AskConfigFileV6Schema = Type.Object({
+	schemaVersion: Type.Literal(6),
+	answer: AskConfigFileV5Schema.properties.answer,
+	behaviour: AskConfigFileV5Schema.properties.behaviour,
+	keymaps: Type.Optional(AskConfigKeymapsSchema),
+	notifications: AskConfigFileV5Schema.properties.notifications,
 });
 
 export const AskConfigFileV4Schema = Type.Object({
@@ -203,6 +220,7 @@ export const AskConfigFileV2Schema = Type.Omit(AskConfigFileV3Schema, [
 	"schemaVersion",
 ]);
 
+export type AskConfigFileV6 = Static<typeof AskConfigFileV6Schema>;
 export type AskConfigFileV5 = Static<typeof AskConfigFileV5Schema>;
 export type AskConfigFileV4 = Static<typeof AskConfigFileV4Schema>;
 export type AskConfigFileV3 = Static<typeof AskConfigFileV3Schema>;
@@ -243,6 +261,8 @@ export interface AskConfigKeymaps {
 		changeQuestionType: string[];
 		requestLaymanExplanation: string[];
 		requestImmediateLaymanExplanation: string[];
+		requestUiVariations: string[];
+		requestImmediateUiVariations: string[];
 		confirm: string[];
 		nextOption: string[];
 		nextTab: string[];
@@ -288,4 +308,4 @@ export interface AskConfig {
 	};
 }
 
-export const validateAskConfigFileV5 = Compile(AskConfigFileV5Schema);
+export const validateAskConfigFileV6 = Compile(AskConfigFileV6Schema);

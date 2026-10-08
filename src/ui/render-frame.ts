@@ -60,11 +60,16 @@ function renderTabs(state: AskState, theme: Theme, width: number): string {
 	const tabs = state.questions.map((question, index) => {
 		const active = state.activeTabIndex === index;
 		const answered = isQuestionAnswered(state, question.id);
-		const requested = state.answers[question.id]?.laymanRequested;
+		const laymanRequested = state.answers[question.id]?.laymanRequested;
+		const uiVariationsRequested =
+			state.answers[question.id]?.uiVariationsRequested;
 		let marker = answered ? "☒" : "☐";
 		let color: "success" | "muted" | "warning" = answered ? "success" : "muted";
-		if (requested) {
+		if (laymanRequested) {
 			marker = "?";
+			color = "warning";
+		} else if (uiVariationsRequested) {
+			marker = "▤";
 			color = "warning";
 		}
 		const text = ` ${marker} ${question.label} `;
@@ -207,15 +212,23 @@ function renderFooter(
 	} else if (isSubmitTab(state)) {
 		footer = renderFooterText(config, "submit");
 	} else {
-		const question = getCurrentQuestion(state);
-		let context: "multi" | "default" | "layman" =
-			question?.type === "multi" ? "multi" : "default";
-		if (question && state.answers[question.id]?.laymanRequested) {
-			context = "layman";
-		}
-		footer = renderFooterText(config, context);
+		footer = renderFooterText(config, getQuestionFooterContext(state));
 	}
 	return wrapDelimitedFooterHints(footer, width);
+}
+
+function getQuestionFooterContext(
+	state: AskState
+): "multi" | "default" | "layman" | "uiVariations" {
+	const question = getCurrentQuestion(state);
+	const answer = question ? state.answers[question.id] : undefined;
+	if (answer?.laymanRequested) {
+		return "layman";
+	}
+	if (answer?.uiVariationsRequested) {
+		return "uiVariations";
+	}
+	return question?.type === "multi" ? "multi" : "default";
 }
 
 function wrapDelimitedFooterHints(footer: string, width: number): string[] {

@@ -30,7 +30,7 @@ Unsupported future versions or invalid files are left unchanged and defaults are
 
 ```json
 {
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "answer": {
     "extractionModels": [
       { "provider": "openai-codex", "id": "<model-id>" },
@@ -56,6 +56,8 @@ Unsupported future versions or invalid files are left unchanged and defaults are
       "changeQuestionType": ["t"],
       "requestLaymanExplanation": ["l"],
       "requestImmediateLaymanExplanation": ["shift+l"],
+      "requestUiVariations": ["h"],
+      "requestImmediateUiVariations": ["shift+h"],
       "nextTab": ["tab", "right"],
       "previousTab": ["shift+tab", "left"],
       "nextOption": ["down"],
@@ -127,7 +129,7 @@ pi auth check --provider openai-codex --model gpt-5.4-mini
 
 - type: boolean
 - default: `false`
-- effect: when enabled, a fully responded ask flow with no notes can auto-submit from the review tab; a layman explanation request counts as a response, even without a selected choice
+- effect: when enabled, a fully responded ask flow with no notes can auto-submit from the review tab; an explanation or UI variation request counts as a response, even without a selected choice
 
 ### `behaviour.confirmDismissWhenDirty`
 
@@ -225,6 +227,8 @@ Arrays are aliases: any listed key triggers the same action.
     "changeQuestionType": ["t"],
     "requestLaymanExplanation": ["l"],
     "requestImmediateLaymanExplanation": ["shift+l"],
+    "requestUiVariations": ["h"],
+    "requestImmediateUiVariations": ["shift+h"],
     "toggle": ["space"],
     "nextTab": ["tab", "right"],
     "previousTab": ["shift+tab", "left"],
@@ -269,6 +273,16 @@ This is an additive schema-version-5 field: old configs gain `l` in memory witho
 `keymaps.main.requestImmediateLaymanExplanation` defaults to `["shift+l"]`. It saves the whole questionnaire, yields the waiting tool call, and asks the main agent to explain only the active question now. A passive dimmed summary remains below the chat. The agent then calls `resume_ask_user` to restore the active tab, answers, custom text, all notes, presentation overrides, and other deferred `l` flags. Only the explained question's flag is cleared on resume. `/ask:continue` offers manual recovery without revisions.
 
 This is also an additive schema-version-5 field: missing bindings default in memory without rewriting the file. An existing main/global `shift+l` binding is preserved and leaves this action unbound. Use `[]` to disable it. Explicit conflicts use the usual invalid-keymap fallback. `Shift+L` does not intercept typing in editors, has no effect on Review, and does not count as final submission or trigger auto-submit.
+
+### UI variation shortcuts
+
+`keymaps.main.requestUiVariations` defaults to `["h"]`. It toggles a mockup request for the active question without submitting immediately. Like `l`, it dims/locks choices and retains selections and custom text privately. Multiple questions can be flagged before submission; `Enter` continues. The agent receives `uiVariations` with full option context and notes, not the flagged answers.
+
+`keymaps.main.requestImmediateUiVariations` defaults to `["shift+h"]`. It saves and pauses the whole form, requesting mockups for only the active question immediately. The agent is instructed to generate temporary HTML showing the existing options, open it in the default browser, then call `resume_ask_user`. Resume clears only the active question's `h` flag; deferred `l` flags remain intact. `/ask:continue` is the manual fallback.
+
+For deferred batches, the agent should combine small/simple surfaces into one page and split complex surfaces into separate temporary files for focused feedback. Generation and browser opening are agent actions, not built-in rendering or a guarantee that a browser is available.
+
+Both are additive schema-version-6 fields: older configs migrate in memory without disk changes; missing shortcuts claim `h`/`shift+h` only when no existing main/global action owns them. Use `[]` to disable either. Both keys remain ordinary text in editors and have no effect on Review. Flags count as responses for configured auto-submit; immediate pauses do not submit.
 
 ### Contexts
 
@@ -333,7 +347,7 @@ If configured keymaps are invalid:
 
 Invalid keymaps include:
 
-- missing one of the required contexts or actions (except the additive `main.requestLaymanExplanation` and `main.requestImmediateLaymanExplanation` actions)
+- missing one of the required contexts or actions (except the additive explanation and UI variation request actions)
 - unsupported key syntax
 - duplicate bindings within one context
 - duplicate bindings between `global` and `main`, `editor`, or `noteEditor`
@@ -343,7 +357,7 @@ Invalid keymaps include:
 
 ```json
 {
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "answer": {
     "extractionRetries": 1,
     "extractionTimeoutMs": 30000,
@@ -370,6 +384,8 @@ Invalid keymaps include:
       "changeQuestionType": ["t"],
       "requestLaymanExplanation": ["l"],
       "requestImmediateLaymanExplanation": ["shift+l"],
+      "requestUiVariations": ["h"],
+      "requestImmediateUiVariations": ["shift+h"],
       "nextTab": ["tab", "right"],
       "previousTab": ["shift+tab", "left"],
       "nextOption": ["down"],
@@ -417,7 +433,7 @@ Invalid keymaps include:
 When editing this config for a user:
 
 - preserve unrelated fields
-- keep `schemaVersion` at `5`
+- keep `schemaVersion` at `6`
 - preserve `answer.extractionModels` as explicit provider/id pairs
 - keep `answer.extractionRetries` between `0` and `3`
 - do not assign fixed numeric shortcuts (`1` through `9`) to configurable actions

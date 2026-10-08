@@ -14,7 +14,12 @@ import {
 import type { RemoteAskRuntime } from "./remote-ask.ts";
 import { AskQuestionSchema } from "./schema.ts";
 import { createPauseResult, resumePausedState } from "./state/pause.ts";
-import type { AskQuestionInput, AskResult, AskState } from "./types.ts";
+import type {
+	AskPauseRequest,
+	AskQuestionInput,
+	AskResult,
+	AskState,
+} from "./types.ts";
 import { runAskFlow } from "./ui/controller.ts";
 import { showPausedWidget } from "./ui/paused-widget.ts";
 
@@ -22,6 +27,7 @@ export interface AskPauseRuntime {
 	save: (
 		ctx: ExtensionContext,
 		state: AskState,
+		request?: AskPauseRequest,
 		allowFreeform?: boolean,
 		pendingToolCallId?: string
 	) => AskResult;
@@ -45,15 +51,22 @@ export function registerPausedAskResume(
 ): AskPauseRuntime {
 	const active = new Map<string, AbortController>();
 	const runtime: AskPauseRuntime = {
-		save(ctx, state, allowFreeform = false, pendingToolCallId?: string) {
+		save(
+			ctx,
+			state,
+			request: AskPauseRequest = "layman",
+			allowFreeform = false,
+			pendingToolCallId?: string
+		) {
 			const id = randomUUID();
-			const result = createPauseResult(state, id);
+			const result = createPauseResult(state, id, request);
 			const paused: PausedAsk = {
 				version: 1,
 				id,
 				state: structuredClone(state),
 				allowFreeform,
 				pendingToolCallId,
+				request,
 			};
 			appendPausedAsk(pi, paused);
 			showPausedWidget(ctx, paused);
@@ -90,7 +103,7 @@ function registerResumeTool(pi: ExtensionAPI, resume: Resume): void {
 		name: "resume_ask_user",
 		label: "Resume Ask User",
 		description:
-			"After explaining an immediate layman request in chat, resume the saved questionnaire using its pauseId. Never reconstruct it with ask_user. Optional questions are targeted replacements with existing ids, only for the active or unanswered questions; omit unchanged questions. Preserve selected and noted option values, and do not revise other answered questions. Saved answers and notes are restored automatically.",
+			"After explaining an immediate layman request or generating the requested UI variation mockups in chat, resume the saved questionnaire using its pauseId. Never reconstruct it with ask_user. Optional questions are targeted replacements with existing ids, only for the active or unanswered questions; omit unchanged questions. Preserve selected and noted option values, and do not revise other answered questions. Saved answers and notes are restored automatically.",
 		parameters: Type.Object({
 			pauseId: Type.String({
 				description: "Opaque pause id from the paused ask_user result",
@@ -160,6 +173,7 @@ async function resumeAsk(
 	}
 	const state = resumePausedState(paused.state, options.questions, {
 		allowFreeform: paused.allowFreeform,
+		request: paused.request,
 	});
 	const controller = new AbortController();
 	const abort = () => controller.abort();

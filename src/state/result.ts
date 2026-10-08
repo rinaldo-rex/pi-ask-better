@@ -4,6 +4,7 @@ import {
 	ELABORATION_INSTRUCTION,
 	LAYMAN_EXPLANATION_INSTRUCTION,
 	SUBMITTED_SUMMARY,
+	UI_VARIATIONS_INSTRUCTION,
 } from "../constants/text.ts";
 import {
 	formatElaborationLines,
@@ -18,6 +19,7 @@ import type {
 	AskResultAnswer,
 	AskState,
 	AskStateAnswer,
+	AskUiVariationsPayload,
 } from "../types.ts";
 import {
 	cloneResultAnswer,
@@ -25,6 +27,7 @@ import {
 	hasAnswerNotes,
 	isAnswerAnswered,
 	isAnswerEmpty,
+	isAnswerLocked,
 	isOptionSelected,
 	isResultAnswerCommitted,
 	isResultAnswerEmpty,
@@ -42,7 +45,7 @@ export type ReviewAnswer = AskResult["answers"][string] & {
 export function toAskResult(state: AskState): AskResult {
 	const answers = Object.fromEntries(
 		Object.entries(state.answers)
-			.filter(([, answer]) => !answer.laymanRequested)
+			.filter(([, answer]) => !isAnswerLocked(answer))
 			.map(
 				([questionId, answer]) => [questionId, serializeAnswer(answer)] as const
 			)
@@ -56,8 +59,12 @@ export function toAskResult(state: AskState): AskResult {
 	const laymanExplanation = state.cancelled
 		? undefined
 		: serializeLaymanExplanation(state);
+	const uiVariations = state.cancelled
+		? undefined
+		: serializeUiVariations(state);
 	return {
 		...(laymanExplanation ? { laymanExplanation } : {}),
+		...(uiVariations ? { uiVariations } : {}),
 		title: state.title,
 		cancelled: state.cancelled,
 		mode: state.mode,
@@ -73,7 +80,8 @@ export function toAskResult(state: AskState): AskResult {
 		})),
 		answers,
 		continuation:
-			!state.cancelled && (state.mode === "elaborate" || laymanExplanation)
+			!state.cancelled &&
+			(state.mode === "elaborate" || laymanExplanation || uiVariations)
 				? serializeContinuation(state, answers)
 				: undefined,
 		elaboration:
@@ -113,7 +121,7 @@ function serializeContinuation(
 	for (const question of state.questions) {
 		const answer = state.answers[question.id];
 		const hasClarificationNeed =
-			answer?.laymanRequested ||
+			isAnswerLocked(answer) ||
 			(state.mode === "elaborate" && hasAnswerNotes(answer));
 		const committedAnswer = answers[question.id];
 		const answered = !!committedAnswer;
@@ -161,6 +169,26 @@ function serializeLaymanExplanation(
 		: undefined;
 }
 
+function serializeUiVariations(
+	state: AskState
+): AskUiVariationsPayload | undefined {
+	const questions = state.questions
+		.filter((question) => state.answers[question.id]?.uiVariationsRequested)
+		.map((question) => {
+			const answer = state.answers[question.id];
+			return {
+				...createElaborationQuestionContext(question),
+				...(answer.note ? { note: answer.note } : {}),
+				...(answer.optionNotes
+					? { optionNotes: { ...answer.optionNotes } }
+					: {}),
+			};
+		});
+	return questions.length
+		? { instruction: UI_VARIATIONS_INSTRUCTION, questions }
+		: undefined;
+}
+
 function serializeElaboration(state: AskState): AskElaborationPayload {
 	const items = state.questions.flatMap((question) =>
 		serializeElaborationItemsForQuestion(question, state.answers[question.id])
@@ -177,7 +205,7 @@ function serializeElaborationItemsForQuestion(
 	question: AskState["questions"][number],
 	answer: AskStateAnswer | undefined
 ): AskElaborationPayload["items"] {
-	if (!(answer && hasAnswerNotes(answer)) || answer.laymanRequested) {
+	if (!(answer && hasAnswerNotes(answer)) || isAnswerLocked(answer)) {
 		return [];
 	}
 

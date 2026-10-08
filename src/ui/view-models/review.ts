@@ -22,6 +22,7 @@ export interface ReviewQuestionModel {
 	laymanRequested?: boolean;
 	note?: string;
 	selections?: ReviewSelectionModel[];
+	uiVariationsRequested?: boolean;
 	unanswered: boolean;
 }
 
@@ -47,14 +48,21 @@ export function buildReviewScreenModel(
 		layout: shouldUseWideSubmitLayout(width, actionColumnWidth)
 			? "wide"
 			: "stacked",
-		questions: state.questions.map((question) =>
-			state.answers[question.id]?.laymanRequested
-				? { label: question.label, laymanRequested: true, unanswered: false }
-				: toReviewQuestionModel(
-						question.label,
-						toReviewAnswer(question, state.answers[question.id], showAllNotes)
-					)
-		),
+		questions: state.questions.map((question) => {
+			const answer = state.answers[question.id];
+			if (answer?.laymanRequested || answer?.uiVariationsRequested) {
+				return {
+					label: question.label,
+					laymanRequested: answer.laymanRequested,
+					uiVariationsRequested: answer.uiVariationsRequested,
+					unanswered: false,
+				};
+			}
+			return toReviewQuestionModel(
+				question.label,
+				toReviewAnswer(question, answer, showAllNotes)
+			);
+		}),
 	};
 }
 

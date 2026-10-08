@@ -1,5 +1,5 @@
 import type { AskQuestionType, AskState, AskStateAnswer } from "../types.ts";
-import { isAnswerEmpty } from "./answers.ts";
+import { isAnswerEmpty, isAnswerLocked } from "./answers.ts";
 import { getAnswer, getCurrentQuestion, isSubmitTab } from "./selectors.ts";
 
 export interface QuestionTypeChangeResult {
@@ -17,7 +17,7 @@ export function cycleCurrentQuestionType(
 	}
 
 	const question = getCurrentQuestion(state);
-	if (!question || state.answers[question.id]?.laymanRequested) {
+	if (!question || isAnswerLocked(state.answers[question.id])) {
 		return { needsConfirmation: false, state };
 	}
 

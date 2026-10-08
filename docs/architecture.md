@@ -106,6 +106,13 @@ The codebase is split so the implementation reads through file boundaries and na
 - live config updates can affect an in-progress ask flow immediately
 - remote ask submissions must be explicit `answer` or `cancel` responses; pi-ask validates ids/values but never infers approve/deny semantics from labels or option values
 
+## UI variation request boundaries
+
+- `AskStateAnswer.uiVariationsRequested` follows the layman flag's private-answer, dirty-state, selection-lock, and auto-submit semantics; `isAnswerLocked` centralizes the shared checks.
+- `uiVariations` serializes full options and notes plus agent instructions; HTML generation/browser opening remain agent responsibilities, not extension-side rendering.
+- Saved checkpoints carry an optional `request` kind (`layman` or `uiVariations`); legacy checkpoints default to layman. Pause serialization emits only the served request; resume clears only that kind on the active question and preserves other flags.
+- Schema-version-6 UI shortcuts are additive and conflict-safe in memory, without rewriting user configs.
+
 ## Documentation rule
 
 Docs should explain contracts, responsibilities, and invariants.
