@@ -3,7 +3,7 @@
 # pi-ask-better
 
 [![npm downloads](https://badgen.net/npm/dm/pi-ask-better)](https://www.npmjs.com/package/pi-ask-better)
-[![last commit](https://badgen.net/github/last-commit/rinaldo-rex/pi-ask-better?v=41123fb)](https://github.com/rinaldo-rex/pi-ask-better/commits/main)
+[![last commit](https://badgen.net/github/last-commit/rinaldo-rex/pi-ask-better?v=b745218)](https://github.com/rinaldo-rex/pi-ask-better/commits/main)
 [![stars](https://badgen.net/github/stars/rinaldo-rex/pi-ask-better)](https://github.com/rinaldo-rex/pi-ask-better/stargazers)
 
 > [!IMPORTANT]
