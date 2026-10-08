@@ -3,7 +3,7 @@
 # pi-ask-better
 
 [![npm downloads](https://badgen.net/npm/dm/pi-ask-better)](https://www.npmjs.com/package/pi-ask-better)
-[![last commit](https://badgen.net/github/last-commit/rinaldo-rex/pi-ask-better?v=033dd1e)](https://github.com/rinaldo-rex/pi-ask-better/commits/main)
+[![last commit](https://badgen.net/github/last-commit/rinaldo-rex/pi-ask-better?v=8f59eaa)](https://github.com/rinaldo-rex/pi-ask-better/commits/main)
 [![stars](https://badgen.net/github/stars/rinaldo-rex/pi-ask-better)](https://github.com/rinaldo-rex/pi-ask-better/stargazers)
 
 > [!IMPORTANT]
@@ -16,6 +16,22 @@ It lets an agent pause, ask structured questions in a terminal UI, and continue 
 ![pi-ask demo](docs/media/pi-ask-demo.gif)
 
 High-quality video: [demo.mp4](https://github.com/user-attachments/assets/a8503ca9-afcb-4c31-9edc-353b985a0209)
+
+## What this fork changes
+
+This fork adds two things on top of upstream `@eko24ive/pi-ask`:
+
+- **Per-question layman explanations** — press `l` on a confusing question to
+  flag it for a plain-language explanation with examples, without abandoning
+  the rest of the batch. Only the flag is submitted; your saved choices for
+  that question are not.
+- **Immediate explanations** — press `Shift+L` to pause the entire form and
+  get an explanation in chat above a dimmed summary. The agent then resumes
+  the questionnaire via `resume_ask_user` (or `/ask:continue`) with answers,
+  custom text, notes, and `l` flags intact.
+
+Everything else — interface, keymaps, settings, notifications, and replay
+commands — matches upstream behavior.
 
 ## Contributions: chill mode
 
