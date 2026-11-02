@@ -116,16 +116,5 @@
     "commitizen": {
       "path": "./node_modules/cz-conventional-changelog"
     }
-  },
-  "pnpm": {
-    "overrides": {
-      "@earendil-works/pi-agent-core": "0.84.1",
-      "@earendil-works/pi-ai": "0.84.1",
-      "@earendil-works/pi-tui": "0.84.1",
-      "@earendil-works/pi-coding-agent": "0.84.1"
-    },
-    "ignoredBuiltDependencies": [
-      "lefthook"
-    ]
   }
 }
