@@ -1,5 +1,6 @@
-import { StringEnum } from "@earendil-works/pi-ai";
 import { Type } from "typebox";
+
+const ASK_QUESTION_TYPES = ["single", "multi", "preview"] as const;
 
 export const AskOptionSchema = Type.Object({
 	value: Type.String({
@@ -42,8 +43,12 @@ export const AskQuestionSchema = Type.Object({
 		description:
 			"Required direct question shown to the user; ask about one decision at a time",
 	}),
+	// A plain string enum (no anyOf/const) keeps the schema accepted by every
+	// provider, matching pi-ai's StringEnum output while staying TypeBox-typed.
 	type: Type.Optional(
-		StringEnum(["single", "multi", "preview"] as const, {
+		Type.Unsafe<(typeof ASK_QUESTION_TYPES)[number]>({
+			type: "string",
+			enum: [...ASK_QUESTION_TYPES],
 			description:
 				"Question type: `single` means one answer is expected, `multi` means multiple answers could reasonably be selected, and `preview` means options need preview-pane detail. Use `preview` only when every option includes `preview` text; descriptions alone are not enough.",
 		})

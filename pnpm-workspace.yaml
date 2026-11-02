@@ -1,8 +1,8 @@
 overrides:
-  '@earendil-works/pi-agent-core': 0.84.1
-  '@earendil-works/pi-ai': 0.84.1
-  '@earendil-works/pi-tui': 0.84.1
-  '@earendil-works/pi-coding-agent': 0.84.1
+  '@earendil-works/pi-agent-core': 1.4.0
+  '@earendil-works/pi-ai': 1.4.0
+  '@earendil-works/pi-tui': 1.4.0
+  '@earendil-works/pi-coding-agent': 1.4.0
 
 # pnpm 11+ reads allowBuilds; pnpm 10 (used in CI) reads ignoredBuiltDependencies.
 allowBuilds:
