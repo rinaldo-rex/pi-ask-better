@@ -108,6 +108,7 @@ export const DEFAULT_ASK_KEYMAPS: AskConfigKeymaps = {
 		previousOption: ["up"],
 		optionNote: ["n"],
 		questionNote: ["shift+n"],
+		toggleMinimize: ["m"],
 	},
 	editor: {
 		submit: ["enter"],
@@ -157,6 +158,7 @@ const DESCRIPTIONS: Record<AskKeymapContext, Record<string, string>> = {
 		previousOption: "Move to previous option/action",
 		optionNote: "Edit selected option note",
 		questionNote: "Edit question note",
+		toggleMinimize: "Minimize or expand the ask widget",
 	},
 	editor: {
 		submit: "Submit custom answer",
@@ -349,6 +351,7 @@ export function renderFooterKeymaps(
 		hints = [
 			footerHint(getAskKeyBindings(config).numberShortcut, "hotkeys"),
 			footerHint(main.confirm, "confirm"),
+			...optionalFooterHint(main.toggleMinimize, "minimize"),
 			footerHint(main.cancel, "cancel"),
 			footerHint(global.settings, "settings"),
 		];
@@ -378,6 +381,7 @@ function getQuestionFooterHints(
 			"note",
 			`${main.optionNote.label}/${main.questionNote.label}`
 		),
+		...optionalFooterHint(main.toggleMinimize, "minimize"),
 		footerHint(main.cancel, "dismiss"),
 		footerHint(global.settings, "settings"),
 	];
@@ -403,6 +407,11 @@ function getQuestionFooterHints(
 		...optionalFooterHint(main.requestUiVariations, "ui variations"),
 		...tail,
 	];
+}
+
+export function renderMinimizedKeymapHint(config: AskConfig): string {
+	const main = getAskContextBindings(config, "main");
+	return optionalFooterHint(main.toggleMinimize, "expand").join("");
 }
 
 export function renderSettingsFooterKeymaps(config: AskConfig): string {
@@ -439,7 +448,7 @@ export function normalizeConfiguredKeymaps(
 		normalized[context] = contextResult.keymaps as never;
 	}
 
-	addMissingRequestBindings(candidate, normalized);
+	addMissingOptionalMainBindings(candidate, normalized);
 	const globalDuplicates = validateCrossContextConflicts(normalized);
 	if (globalDuplicates) {
 		return { ok: false, error: globalDuplicates };
@@ -448,14 +457,15 @@ export function normalizeConfiguredKeymaps(
 	return { ok: true, keymaps: normalized };
 }
 
-const REQUEST_BINDING_DEFAULTS = [
+const OPTIONAL_MAIN_BINDING_DEFAULTS = [
 	["requestLaymanExplanation", "l"],
 	["requestImmediateLaymanExplanation", "shift+l"],
 	["requestUiVariations", "h"],
 	["requestImmediateUiVariations", "shift+h"],
+	["toggleMinimize", "m"],
 ] as const;
 
-function addMissingRequestBindings(
+function addMissingOptionalMainBindings(
 	candidate: object,
 	keymaps: AskConfigKeymaps
 ) {
@@ -464,7 +474,7 @@ function addMissingRequestBindings(
 		...flattenBindings(keymaps.global),
 		...flattenBindings(keymaps.main),
 	];
-	for (const [action, key] of REQUEST_BINDING_DEFAULTS) {
+	for (const [action, key] of OPTIONAL_MAIN_BINDING_DEFAULTS) {
 		if (main?.[action] !== undefined) {
 			continue;
 		}
@@ -488,8 +498,8 @@ function normalizeContextKeymaps(
 		const rawValue = rawContext[action];
 		if (
 			context === "main" &&
-			REQUEST_BINDING_DEFAULTS.some(
-				([requestAction]) => requestAction === action
+			OPTIONAL_MAIN_BINDING_DEFAULTS.some(
+				([optionalAction]) => optionalAction === action
 			) &&
 			(rawValue === undefined ||
 				(Array.isArray(rawValue) && rawValue.length === 0))
@@ -639,10 +649,10 @@ export function normalizeLegacyFlatKeymaps(
 			close: coerceLegacyBinding(raw.cancel, defaults.noteEditor.close),
 		},
 	};
-	for (const [action] of REQUEST_BINDING_DEFAULTS) {
+	for (const [action] of OPTIONAL_MAIN_BINDING_DEFAULTS) {
 		normalized.main[action] = [];
 	}
-	addMissingRequestBindings({}, normalized);
+	addMissingOptionalMainBindings({}, normalized);
 	return normalized;
 }
 
@@ -717,6 +727,7 @@ function cloneKeymaps(keymaps: AskConfigKeymaps): AskConfigKeymaps {
 			previousOption: [...keymaps.main.previousOption],
 			optionNote: [...keymaps.main.optionNote],
 			questionNote: [...keymaps.main.questionNote],
+			toggleMinimize: [...keymaps.main.toggleMinimize],
 		},
 		editor: {
 			submit: [...keymaps.editor.submit],

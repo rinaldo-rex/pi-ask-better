@@ -22,6 +22,7 @@ export type AskInputCommand =
 	| { kind: "requestImmediateLaymanExplanation" }
 	| { kind: "requestUiVariations" }
 	| { kind: "requestImmediateUiVariations" }
+	| { kind: "toggleMinimize" }
 	| { kind: "dismiss" }
 	| { kind: "showSettings" }
 	| { kind: "numberShortcut"; digit: number }
@@ -54,6 +55,23 @@ export function getInputCommand(
 	}
 
 	return getNavigationInputCommand(config, data);
+}
+
+export function getMinimizedInputCommand(
+	config: AskConfig,
+	data: string
+): AskInputCommand {
+	const global = getGlobalBindings(config);
+	if (matchesBinding(data, global.dismiss)) {
+		return { kind: "dismiss" };
+	}
+	if (matchesBinding(data, global.settings)) {
+		return { kind: "showSettings" };
+	}
+	const main = getAskContextBindings(config, "main");
+	return matchesBinding(data, main.toggleMinimize)
+		? { kind: "toggleMinimize" }
+		: { kind: "ignore" };
 }
 
 function getAnswerEditorInputCommand(
@@ -141,12 +159,9 @@ function getNavigationInputCommand(
 	if (matchesBinding(data, bindings.toggle)) {
 		return { kind: "toggleMulti" };
 	}
-	const explanation = getRequestInputCommand(bindings, data);
-	if (explanation) {
-		return explanation;
-	}
-	if (matchesBinding(data, bindings.changeQuestionType)) {
-		return { kind: "changeQuestionType" };
+	const shortcut = getShortcutInputCommand(bindings, data);
+	if (shortcut) {
+		return shortcut;
 	}
 	if (matchesBinding(data, bindings.confirm)) {
 		return { kind: "confirm" };
@@ -167,12 +182,14 @@ function getNavigationInputCommand(
 		: { kind: "numberShortcut", digit };
 }
 
-function getRequestInputCommand(
+function getShortcutInputCommand(
 	bindings: {
+		changeQuestionType: AskKeyBinding;
 		requestImmediateLaymanExplanation: AskKeyBinding;
 		requestImmediateUiVariations: AskKeyBinding;
 		requestLaymanExplanation: AskKeyBinding;
 		requestUiVariations: AskKeyBinding;
+		toggleMinimize: AskKeyBinding;
 	},
 	data: string
 ): AskInputCommand | undefined {
@@ -187,6 +204,12 @@ function getRequestInputCommand(
 	}
 	if (matchesBinding(data, bindings.requestUiVariations)) {
 		return { kind: "requestUiVariations" };
+	}
+	if (matchesBinding(data, bindings.changeQuestionType)) {
+		return { kind: "changeQuestionType" };
+	}
+	if (matchesBinding(data, bindings.toggleMinimize)) {
+		return { kind: "toggleMinimize" };
 	}
 	return;
 }

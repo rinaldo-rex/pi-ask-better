@@ -257,6 +257,7 @@ This document defines the stable external behavior. It does not explain internal
 - ask settings list with binary behaviour/notification toggles and a guarded reset-to-defaults action
 - `?` in the ask flow and `/ask-settings` in pi open the same lightweight ask settings overlay
 - settings attempt to persist immediately when changed: `Auto-submit when answered without notes`, `Confirm dismiss when dirty`, `Double-press review shortcuts`, `Notifications`, and `Show footer hints`; `Present single-select as multi-select` persists immediately when saving succeeds but applies only to new/replayed ask flows; save failures revert the setting and show a manual-edit message; resetting config to defaults requires pressing the reset action twice within a short confirmation window
+- additive schema-version-6 `main.toggleMinimize` keymap defaults in memory to `m` when absent, or to an unbound action if an existing main/global binding owns `m`; `[]` explicitly disables it
 - additive schema-version-5 `main.requestLaymanExplanation` and `main.requestImmediateLaymanExplanation` keymaps default in memory to `l` and `Shift+L` when absent, or to unbound actions if existing main/global bindings own their defaults; existing bindings are preserved and `[]` explicitly disables either shortcut
 - `Keymaps` is a persisted, context-aware config section for global, main-flow, editor, note-editor, and settings-modal actions
 - the settings list shows the absolute config file path for customizing keymaps, notifications, and extraction settings
@@ -276,6 +277,9 @@ Main flow:
 - `main.requestLaymanExplanation` toggles an explanation request for the active question; default: `l`; saved choices remain private while flagged, and selecting/toggling options, opening custom input, moving between options, and changing question type are disabled; `Enter` continues to the next tab and normal tab navigation/notes/settings remain available; the action has no effect on Review
 - `main.requestImmediateLaymanExplanation` pauses the active question for explanation now; default: `Shift+L`; no effect on Review or editor input, no dirty-dismiss confirmation, and no final/auto submission
 - `main.optionNote` and `main.questionNote` open option/question notes; defaults: `n`, `Shift+N`
+- `main.toggleMinimize` collapses the ask widget to a one-line summary (title, active tab, answered count, and the expand hint) so the conversation above stays readable; default: `m`; available on question tabs and Review, but not while an answer or note editor is open (including the editor that opens automatically when `Type your own` is highlighted), where `m` is ordinary text
+- while minimized, only `main.toggleMinimize` (expand), `global.dismiss`, and `global.settings` act; all other keys are ignored so answers cannot change by accident; answers, notes, drafts, the highlighted option, and the active tab are untouched, and footer notices such as the dirty-dismiss warning still render below the summary
+- minimization is UI-only: it is not part of ask state, results, or pause checkpoints, so every new, replayed, or resumed ask opens expanded; unbinding `main.toggleMinimize` through a live config change expands an open minimized flow
 - `1..9` is fixed and selects or toggles the matching option; on the review tab, `1`, `2`, and `3` trigger `Submit`, `Elaborate`, and `Cancel`
 - when `Double-press review shortcuts` is enabled, review-tab `1`, `2`, and `3` require the same key twice without a timeout, and the review screen shows an inline hint for the pending action
 

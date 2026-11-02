@@ -1,3 +1,9 @@
+# Unreleased
+
+### Features
+
+* Minimize the ask widget to a one-line summary with `m` (configurable as `keymaps.main.toggleMinimize`) so long questions no longer hide the conversation above them ([#8](https://github.com/rinaldo-rex/pi-ask-better/issues/8)).
+
 # 1.4.0 (2026-10-08)
 
 ### Features

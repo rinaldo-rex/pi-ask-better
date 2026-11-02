@@ -98,6 +98,7 @@ The codebase is split so the implementation reads through file boundaries and na
 - invalid persisted keymaps fall back to default keymaps for the current session without discarding valid behaviour, notification, or answer settings
 - invalid notification channels are skipped and fall back to the default bell channel if none are valid
 - ask settings behaviour and notification enabled changes attempt to persist immediately from the settings list; save failures revert the change and show an error; config reset is guarded by a short double-press confirmation
+- ask-widget minimization is controller-only UI state, never part of `AskState`, results, or pause checkpoints; while minimized, input routes through `getMinimizedInputCommand` (toggle, dismiss, settings only) and rendering through `renderMinimizedFrame`
 - `presentSingleAsMulti` is applied at ask-flow creation; toggling it does not rewrite already-normalized questions in an open flow
 - `main.changeQuestionType` changes the active question type live (non-preview: `single <-> multi`; preview: `preview <-> multi`) and may require confirmation before destructive multi-to-single conversion
 - when the ask config file is missing, the first ask use attempts to write a default persisted config snapshot under `~/.pi/agent/extensions/`; if writing fails, built-in defaults are used for the session
@@ -111,7 +112,7 @@ The codebase is split so the implementation reads through file boundaries and na
 - `AskStateAnswer.uiVariationsRequested` follows the layman flag's private-answer, dirty-state, selection-lock, and auto-submit semantics; `isAnswerLocked` centralizes the shared checks.
 - `uiVariations` serializes full options and notes plus agent instructions; HTML generation/browser opening remain agent responsibilities, not extension-side rendering.
 - Saved checkpoints carry an optional `request` kind (`layman` or `uiVariations`); legacy checkpoints default to layman. Pause serialization emits only the served request; resume clears only that kind on the active question and preserves other flags.
-- Schema-version-6 UI shortcuts are additive and conflict-safe in memory, without rewriting user configs.
+- Schema-version-6 UI shortcuts (including `main.toggleMinimize`) are additive and conflict-safe in memory, without rewriting user configs; `OPTIONAL_MAIN_BINDING_DEFAULTS` in `src/constants/keymaps.ts` lists every such action.
 
 ## Documentation rule
 

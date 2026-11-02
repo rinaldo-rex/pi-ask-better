@@ -1,5 +1,6 @@
 import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import type { AskConfig } from "../config/schema.ts";
+import { renderMinimizedKeymapHint } from "../constants/keymaps.ts";
 import {
 	getCurrentQuestion,
 	isQuestionAnswered,
@@ -50,6 +51,84 @@ export function renderFrameFooter(args: {
 		}
 	}
 	add(theme.fg("accent", "─".repeat(Math.max(1, width))));
+}
+
+export function renderMinimizedFrame(args: {
+	config: AskConfig;
+	footerNotice?: string;
+	state: AskState;
+	theme: Theme;
+	width: number;
+}): string[] {
+	const { config, footerNotice, state, theme, width } = args;
+	const lines: string[] = [];
+	const add = (text = "") => lines.push(truncateToWidth(text, width));
+	const rule = theme.fg("accent", "─".repeat(Math.max(1, width)));
+
+	add(rule);
+	add(renderMinimizedSummary(config, state, theme, width));
+	for (const line of footerNotice ? wrapText(footerNotice, width) : []) {
+		add(theme.fg("warning", line));
+	}
+	add(rule);
+	return lines;
+}
+
+const MINIMIZED_PREFIX = " ▸ ";
+const MINIMIZED_SEPARATOR = " · ";
+
+function renderMinimizedSummary(
+	config: AskConfig,
+	state: AskState,
+	theme: Theme,
+	width: number
+): string {
+	const total = state.questions.length;
+	const answered = state.questions.filter((question) =>
+		isQuestionAnswered(state, question.id)
+	).length;
+	const question = getCurrentQuestion(state);
+	const onReview = isSubmitTab(state) || !question;
+	const position = onReview
+		? "Review"
+		: `Q${state.activeTabIndex + 1}/${total}`;
+	const hint = renderMinimizedKeymapHint(config);
+
+	const title = {
+		text: state.title ?? "Ask",
+		render: (text: string) => theme.fg("accent", theme.bold(text)),
+	};
+	const current = {
+		text: onReview ? position : `${position} ${question.label}`,
+		render: (text: string) => theme.fg("text", text),
+	};
+	const shortCurrent = { ...current, text: position };
+	const progress = {
+		text: `${answered}/${total} answered`,
+		render: (text: string) => theme.fg("muted", text),
+	};
+	const hintParts = hint ? [hint] : [];
+	// Drop the lowest-priority details first so the expand hint stays visible.
+	const layouts = [
+		[title, current, progress],
+		[title, current],
+		[current],
+		[shortCurrent],
+	];
+	const details = layouts.find(
+		(layout) =>
+			visibleWidth(
+				MINIMIZED_PREFIX +
+					[...layout.map((part) => part.text), ...hintParts].join(
+						MINIMIZED_SEPARATOR
+					)
+			) <= width
+	) ?? [shortCurrent];
+	const parts = [
+		...details.map((part) => part.render(part.text)),
+		...hintParts.map((text) => theme.fg("dim", text)),
+	];
+	return `${theme.fg("accent", MINIMIZED_PREFIX)}${parts.join(theme.fg("dim", MINIMIZED_SEPARATOR))}`;
 }
 
 const TAB_PREFIX = " ← ";

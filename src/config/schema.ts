@@ -139,6 +139,7 @@ const AskConfigKeymapsSchema = Type.Object({
 		...AskConfigKeymapsV5Schema.properties.main.properties,
 		requestUiVariations: Type.Optional(AskKeyBindingSchema),
 		requestImmediateUiVariations: Type.Optional(AskKeyBindingSchema),
+		toggleMinimize: Type.Optional(AskKeyBindingSchema),
 	}),
 });
 
@@ -271,6 +272,7 @@ export interface AskConfigKeymaps {
 		previousTab: string[];
 		questionNote: string[];
 		toggle: string[];
+		toggleMinimize: string[];
 	};
 	noteEditor: {
 		close: string[];

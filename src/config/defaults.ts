@@ -139,6 +139,7 @@ function cloneKeymaps(keymaps: AskConfigKeymaps): AskConfigKeymaps {
 			previousTab: [...keymaps.main.previousTab],
 			questionNote: [...keymaps.main.questionNote],
 			toggle: [...keymaps.main.toggle],
+			toggleMinimize: [...keymaps.main.toggleMinimize],
 		},
 		editor: {
 			close: [...keymaps.editor.close],

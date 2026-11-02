@@ -58,7 +58,7 @@ import {
 	shouldDiscardAfterConfirmation,
 } from "./dismiss-guard.ts";
 import type { AskInputCommand } from "./input.ts";
-import { getInputCommand } from "./input.ts";
+import { getInputCommand, getMinimizedInputCommand } from "./input.ts";
 import { renderAskScreen } from "./render.ts";
 import {
 	getReviewShortcutHint,
@@ -105,6 +105,7 @@ interface AskFlowController {
 	editor: Editor;
 	finished: boolean;
 	flowOptions: AskFlowOptions;
+	minimized: boolean;
 	pendingQuestionTypeChangeQuestionId?: string;
 	pendingReviewShortcutActionIndex?: number;
 	remoteFlow?: RemoteAskFlowHandle;
@@ -164,6 +165,7 @@ function createAskFlowController(
 		finished: false,
 		flowOptions: params.flowOptions,
 		editor: createEditor(tui, theme, params.cwd),
+		minimized: false,
 		settingsOpen: false,
 		state: params.flowOptions.initialState
 			? structuredClone(params.flowOptions.initialState)
@@ -181,6 +183,9 @@ function createAskFlowController(
 	controller.unsubscribeConfig = getAskConfigStore().subscribe((config) => {
 		controller.config = config;
 		controller.configNotice = undefined;
+		if (config.keymaps.main.toggleMinimize.length === 0) {
+			controller.minimized = false;
+		}
 		controller.state = maybeAutoSubmitState(
 			controller.state,
 			controller.config
@@ -237,6 +242,7 @@ function renderController(
 		config: controller.config,
 		editor: controller.editor,
 		footerNotice: getFooterNotice(controller),
+		minimized: controller.minimized,
 		reviewShortcutHint: getActiveReviewShortcutHint(controller),
 		state: controller.state,
 		theme: controller.theme,
@@ -246,6 +252,13 @@ function renderController(
 
 function handleControllerInput(controller: AskFlowController, data: string) {
 	if (controller.finished) {
+		return;
+	}
+	if (controller.minimized) {
+		handleMinimizedCommand(
+			controller,
+			getMinimizedInputCommand(controller.config, data)
+		);
 		return;
 	}
 	controller.editor.disableSubmit = !isNativeEditorSubmitEnabled(controller);
@@ -270,6 +283,30 @@ function isNativeEditorSubmitEnabled(controller: AskFlowController): boolean {
 		return controller.config.keymaps.noteEditor.save.includes("enter");
 	}
 	return true;
+}
+
+function handleMinimizedCommand(
+	controller: AskFlowController,
+	command: AskInputCommand
+) {
+	switch (command.kind) {
+		case "toggleMinimize":
+			toggleMinimized(controller);
+			return;
+		case "dismiss":
+			handleExitFlow(controller, dismissFlow(controller.state));
+			return;
+		case "showSettings":
+			showSettingsModal(controller);
+			return;
+		default:
+			return;
+	}
+}
+
+function toggleMinimized(controller: AskFlowController) {
+	controller.minimized = !controller.minimized;
+	refresh(controller);
 }
 
 function handleEditingCommand(
@@ -336,6 +373,10 @@ function handleNavigationCommand(
 		case "changeQuestionType":
 			clearReviewShortcutPending(controller);
 			handleChangeQuestionType(controller);
+			return;
+		case "toggleMinimize":
+			clearPendingActions(controller);
+			toggleMinimized(controller);
 			return;
 		case "openQuestionNote":
 			clearQuestionTypeChangePending(controller);

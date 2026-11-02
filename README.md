@@ -112,6 +112,7 @@ Once installed, this package gives the agent a native way to ask for clarificati
 - 💡 Per-question layman explanation requests (`l`) without abandoning the batch
 - ⏸️ Immediate explanations (`Shift+L`) in chat above a frozen form, followed by state-preserving resume
 - 🖼️ UI variation requests (`h`) or immediate HTML mockups (`Shift+H`), generated and opened by the agent
+- ↕️ Minimize the ask widget (`m`) to a one-line summary to read the conversation above it, then expand with answers intact
 - ✍️ Inline free-form `Type your own` answers
 - 📎 Native pi-style `@` file references inside answer and note editors
 - 📝 Question-level and option-level notes
@@ -189,6 +190,8 @@ Press `h` to flag the active question for visual UI mockups without submitting i
 
 Press `Shift+H` to pause the whole form and request mockups for the current question immediately, then resume through `resume_ask_user` or `/ask:continue`. Only the served mockup flag is cleared; deferred `l` requests remain saved. The agent renders the existing options only, without extra designs. These shortcuts are configurable as `keymaps.main.requestUiVariations` and `keymaps.main.requestImmediateUiVariations`; use `[]` to disable. Both remain ordinary text in editors and have no effect on Review. HTML generation and browser opening depend on the agent's available tools, not a built-in HTML renderer.
 
+Press `m` to collapse a long ask into a one-line summary so you can read the agent's message above it; press `m` again to expand. While minimized, only `m`, dismiss, and settings respond, and your answers, notes, and active tab are kept. `m` stays ordinary text in answer/note editors. Customize or disable it with `keymaps.main.toggleMinimize` (`["m"]` or `[]`).
+
 Fixed bindings:
 
 | Key | Context | Effect |
@@ -239,7 +242,8 @@ You can edit the config file yourself, ask pi to edit it for you, or use `/ask-s
       "nextOption": ["down"],
       "previousOption": ["up"],
       "optionNote": ["n"],
-      "questionNote": ["shift+n"]
+      "questionNote": ["shift+n"],
+      "toggleMinimize": ["m"]
     },
     "editor": {
       "submit": ["enter"],

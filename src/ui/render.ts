@@ -5,7 +5,11 @@ import {
 	isSubmitTab,
 } from "../state/selectors.ts";
 import type { AskState } from "../types.ts";
-import { renderFrameFooter, renderFrameHeader } from "./render-frame.ts";
+import {
+	renderFrameFooter,
+	renderFrameHeader,
+	renderMinimizedFrame,
+} from "./render-frame.ts";
 import { renderQuestionScreen } from "./render-question.ts";
 import { renderSubmitScreen } from "./render-submit.ts";
 import type { QuestionRenderContext, Theme } from "./render-types.ts";
@@ -13,6 +17,7 @@ import type { QuestionRenderContext, Theme } from "./render-types.ts";
 export function renderAskScreen(args: {
 	config: AskConfig;
 	footerNotice?: string;
+	minimized?: boolean;
 	reviewShortcutHint?: string;
 	state: AskState;
 	theme: Theme;
@@ -22,12 +27,16 @@ export function renderAskScreen(args: {
 	const {
 		config,
 		footerNotice,
+		minimized,
 		reviewShortcutHint,
 		state,
 		theme,
 		width,
 		editor,
 	} = args;
+	if (minimized) {
+		return renderMinimizedFrame({ config, footerNotice, state, theme, width });
+	}
 	const lines: string[] = [];
 	const question = getCurrentQuestion(state);
 	const options = getRenderableOptions(question);

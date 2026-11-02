@@ -63,7 +63,8 @@ Unsupported future versions or invalid files are left unchanged and defaults are
       "nextOption": ["down"],
       "previousOption": ["up"],
       "optionNote": ["n"],
-      "questionNote": ["shift+n"]
+      "questionNote": ["shift+n"],
+      "toggleMinimize": ["m"]
     },
     "editor": {
       "submit": ["enter"],
@@ -235,7 +236,8 @@ Arrays are aliases: any listed key triggers the same action.
     "nextOption": ["down"],
     "previousOption": ["up"],
     "optionNote": ["n"],
-    "questionNote": ["shift+n"]
+    "questionNote": ["shift+n"],
+    "toggleMinimize": ["m"]
   },
   "editor": {
     "submit": ["enter"],
@@ -283,6 +285,14 @@ This is also an additive schema-version-5 field: missing bindings default in mem
 For deferred batches, the agent should combine small/simple surfaces into one page and split complex surfaces into separate temporary files for focused feedback. Generation and browser opening are agent actions, not built-in rendering or a guarantee that a browser is available.
 
 Both are additive schema-version-6 fields: older configs migrate in memory without disk changes; missing shortcuts claim `h`/`shift+h` only when no existing main/global action owns them. Use `[]` to disable either. Both keys remain ordinary text in editors and have no effect on Review. Flags count as responses for configured auto-submit; immediate pauses do not submit.
+
+### Minimize shortcut
+
+`keymaps.main.toggleMinimize` defaults to `["m"]`. It collapses the ask widget to a one-line summary so long questions do not hide the conversation above it, and pressing it again expands the widget. While minimized, only this key, `global.dismiss`, and `global.settings` act; everything else is ignored, and all answers, notes, and the active tab are kept. Minimization is not saved, so new and resumed asks always open expanded.
+
+`m` remains ordinary text in answer/note editors, including the editor that opens automatically when `Type your own` is highlighted; move to another option first, or bind a modified key such as `alt+m`. Avoid `ctrl+m`, which many terminals send as `enter`.
+
+This is an additive schema-version-6 field: missing bindings default in memory without rewriting the file, and `m` is claimed only when no existing main/global action owns it. Use `[]` to disable it.
 
 ### Contexts
 
@@ -391,7 +401,8 @@ Invalid keymaps include:
       "nextOption": ["down"],
       "previousOption": ["up"],
       "optionNote": ["x"],
-      "questionNote": ["shift+x"]
+      "questionNote": ["shift+x"],
+      "toggleMinimize": ["m"]
     },
     "editor": {
       "submit": ["ctrl+k"],

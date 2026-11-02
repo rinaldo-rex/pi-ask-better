@@ -225,7 +225,7 @@ test("footer hints wrap into exact lines on narrow screens", () => {
 		editor: mockEditor(),
 	});
 
-	assert.deepEqual(lines.slice(-10, -1), [
+	assert.deepEqual(lines.slice(-11, -1), [
 		" shift+l explain now",
 		"shift+h mockups now",
 		"Space toggle",
@@ -234,7 +234,8 @@ test("footer hints wrap into exact lines on narrow screens", () => {
 		"h ui variations",
 		"Enter continue",
 		"N/Shift+N note",
-		"Esc dismiss · ? settings",
+		"m minimize · Esc dismiss",
+		"? settings",
 	]);
 });
 
@@ -258,9 +259,10 @@ test("footer keeps earlier hint chunk on the first wrapped line", () => {
 		editor: mockEditor(),
 	});
 
-	assert.deepEqual(lines.slice(-5, -1), [
+	assert.deepEqual(lines.slice(-6, -1), [
 		"Enter confirm",
 		"N/Shift+N note",
+		"m minimize",
 		"Esc dismiss",
 		"? settings",
 	]);
