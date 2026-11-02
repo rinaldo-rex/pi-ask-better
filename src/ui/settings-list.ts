@@ -7,7 +7,11 @@ import { DEFAULT_ASK_CONFIG, normalizeAskConfig } from "../config/defaults.ts";
 import type { AskConfig } from "../config/schema.ts";
 import type { AskConfigNotice } from "../config/store.ts";
 import {
+	ALWAYS_VISIBLE_FOOTER_HINT,
+	type FooterHintId,
 	getAskContextBindings,
+	getAskKeyBindings,
+	HIDEABLE_FOOTER_HINTS,
 	matchesBinding,
 	renderSettingsFooterKeymaps,
 } from "../constants/keymaps.ts";
@@ -35,7 +39,9 @@ const COMPACT_WIDTH = 40;
 const RESET_CONFIRMATION_MS = 2000;
 
 type SettingSection = "Actions" | "Defaults for future asks" | "Live settings";
-type ToggleSettingKey = keyof AskConfig["behaviour"] | "notifications.enabled";
+type ToggleSettingKey =
+	| Exclude<keyof AskConfig["behaviour"], "hiddenFooterHints">
+	| "notifications.enabled";
 
 interface BaseSetting {
 	description: string;
@@ -53,7 +59,12 @@ interface ToggleSetting extends BaseSetting {
 	type: "toggle";
 }
 
-type Setting = ActionSetting | ToggleSetting;
+interface PageSetting extends BaseSetting {
+	key: "footerHints";
+	type: "page";
+}
+
+type Setting = ActionSetting | PageSetting | ToggleSetting;
 
 const SETTINGS = [
 	{
@@ -97,6 +108,14 @@ const SETTINGS = [
 	},
 	{
 		description:
+			"Choose which keymap hints the footer shows. Hidden hints still work; the settings hint always stays visible.",
+		key: "footerHints",
+		section: "Live settings",
+		label: "Footer hints",
+		type: "page",
+	},
+	{
+		description:
 			"Default new and replayed ask flows to render single-select questions as multi-select. This is not hot-applied to the current flow; use the type hotkey there.",
 		key: "presentSingleAsMulti",
 		section: "Defaults for future asks",
@@ -114,12 +133,20 @@ const SETTINGS = [
 ] as const satisfies readonly Setting[];
 
 type SettingKey = ToggleSettingKey;
+type SettingsPage = "main" | "footerHints";
+
+const FOOTER_HINT_ROWS = [
+	...HIDEABLE_FOOTER_HINTS,
+	{ id: ALWAYS_VISIBLE_FOOTER_HINT, label: "settings" },
+] as const;
 
 export class AskSettingsList {
 	private closed = false;
 	private config: AskConfig;
 	private error?: string;
 	private focusIndex = 0;
+	private hintFocusIndex = 0;
+	private page: SettingsPage = "main";
 	private resetConfirmUntil = 0;
 	private notice?: AskConfigNotice;
 	private readonly configPath: string;
@@ -140,6 +167,10 @@ export class AskSettingsList {
 
 	handleInput(data: string): void {
 		const bindings = getAskContextBindings(this.config, "settingsModal");
+		if (this.page === "footerHints") {
+			this.handleFooterHintsInput(data, bindings);
+			return;
+		}
 		if (matchesBinding(data, bindings.close)) {
 			this.close();
 			return;
@@ -158,6 +189,9 @@ export class AskSettingsList {
 	}
 
 	render(width: number): string[] {
+		if (this.page === "footerHints") {
+			return this.renderFooterHintsPage(width);
+		}
 		const innerWidth = Math.max(24, width - 2);
 		const lines = [
 			this.topBorder(innerWidth),
@@ -226,19 +260,133 @@ export class AskSettingsList {
 		this.close();
 	}
 
-	private appendFooter(lines: string[], innerWidth: number): void {
+	private handleFooterHintsInput(
+		data: string,
+		bindings: ReturnType<typeof getAskContextBindings<"settingsModal">>
+	): void {
+		if (matchesBinding(data, bindings.close)) {
+			this.page = "main";
+			this.tui.requestRender();
+			return;
+		}
+		if (matchesBinding(data, bindings.previousOption)) {
+			this.moveHintFocus(-1);
+			return;
+		}
+		if (matchesBinding(data, bindings.nextOption)) {
+			this.moveHintFocus(1);
+			return;
+		}
+		if (matchesBinding(data, bindings.toggle)) {
+			this.toggleFocusedFooterHint();
+		}
+	}
+
+	private renderFooterHintsPage(width: number): string[] {
+		const innerWidth = Math.max(24, width - 2);
+		const lines = [
+			this.topBorder(innerWidth),
+			this.line(
+				center(this.theme.fg("accent", "Footer hints"), innerWidth),
+				innerWidth
+			),
+			this.line("", innerWidth),
+		];
+		this.appendWrapped(
+			lines,
+			this.theme.fg(
+				"muted",
+				"Hidden hints keep working; only their footer text is removed."
+			),
+			innerWidth
+		);
+		if (!this.config.behaviour.showFooterHints) {
+			this.appendWrapped(
+				lines,
+				this.theme.fg(
+					"warning",
+					"Show footer hints is off, so no hints are shown right now."
+				),
+				innerWidth
+			);
+		}
+		lines.push(this.line("", innerWidth));
+
+		const bindings = getAskKeyBindings(this.config);
+		const hidden = new Set<string>(this.config.behaviour.hiddenFooterHints);
+		const keyWidth = Math.max(
+			...FOOTER_HINT_ROWS.map((row) =>
+				visibleWidth(formatHintKey(bindings[row.id]?.label))
+			)
+		);
+		for (const [index, row] of FOOTER_HINT_ROWS.entries()) {
+			const key = formatHintKey(bindings[row.id]?.label);
+			const label = `${key.padEnd(keyWidth)}  ${row.label}`;
+			let value = hidden.has(row.id) ? "off" : "on";
+			if (row.id === ALWAYS_VISIBLE_FOOTER_HINT) {
+				value = "always on";
+			}
+			for (const rowLine of this.renderLabeledRow(
+				label,
+				value,
+				index === this.hintFocusIndex,
+				innerWidth
+			)) {
+				lines.push(this.line(rowLine, innerWidth));
+			}
+		}
+
+		this.appendNotice(lines, innerWidth);
+		lines.push(this.line("", innerWidth));
+		this.appendFooter(lines, innerWidth, "go back");
+		lines.push(this.bottomBorder(innerWidth));
+		return lines.map((line) => truncateToWidth(line, width));
+	}
+
+	private moveHintFocus(delta: 1 | -1): void {
+		this.hintFocusIndex =
+			(this.hintFocusIndex + delta + FOOTER_HINT_ROWS.length) %
+			FOOTER_HINT_ROWS.length;
+		this.tui.requestRender();
+	}
+
+	private toggleFocusedFooterHint(): void {
+		const row = FOOTER_HINT_ROWS[this.hintFocusIndex];
+		if (!row || row.id === ALWAYS_VISIBLE_FOOTER_HINT) {
+			return;
+		}
+		const id: FooterHintId = row.id;
+		const hidden = new Set<string>(this.config.behaviour.hiddenFooterHints);
+		if (hidden.has(id)) {
+			hidden.delete(id);
+		} else {
+			hidden.add(id);
+		}
+		this.saveConfig({
+			...this.config,
+			behaviour: {
+				...this.config.behaviour,
+				hiddenFooterHints: HIDEABLE_FOOTER_HINTS.map((hint) => hint.id).filter(
+					(hintId) => hidden.has(hintId)
+				),
+			},
+		});
+		this.tui.requestRender();
+	}
+
+	private appendFooter(
+		lines: string[],
+		innerWidth: number,
+		closeAction?: string
+	): void {
+		const footer = renderSettingsFooterKeymaps(this.config, closeAction);
 		if (innerWidth < COMPACT_WIDTH) {
-			const footer = renderSettingsFooterKeymaps(this.config);
 			for (const line of wrapTextWithAnsi(footer, innerWidth - 2)) {
 				lines.push(this.line(this.theme.fg("dim", ` ${line}`), innerWidth));
 			}
 			return;
 		}
-		this.appendWrapped(
-			lines,
-			this.theme.fg("dim", renderSettingsFooterKeymaps(this.config)),
-			innerWidth
-		);
+		this.appendWrapped(lines, this.theme.fg("dim", footer), innerWidth);
 	}
 
 	private appendSelectedDescription(lines: string[], innerWidth: number): void {
@@ -301,18 +449,32 @@ export class AskSettingsList {
 		innerWidth: number
 	): string[] {
 		const selected = index === this.focusIndex;
-		const prefix = selected ? this.theme.fg("accent", "❯ ") : "  ";
-		const continuationPrefix = "  ";
 		if (setting.type === "action") {
 			return [center(this.renderSettingValue(setting, selected), innerWidth)];
 		}
-		const value = this.renderSettingValue(setting, selected);
+		return this.renderLabeledRow(
+			setting.label,
+			this.getSettingDisplayValue(setting),
+			selected,
+			innerWidth
+		);
+	}
+
+	private renderLabeledRow(
+		labelText: string,
+		valueText: boolean | string,
+		selected: boolean,
+		innerWidth: number
+	): string[] {
+		const prefix = selected ? this.theme.fg("accent", "❯ ") : "  ";
+		const continuationPrefix = "  ";
+		const value = this.renderValue(valueText, selected);
 		const valueWidth = visibleWidth(value);
 		const labelWidth = Math.max(
 			1,
 			innerWidth - visibleWidth(prefix) - valueWidth - 2
 		);
-		const labelLines = wrapTextWithAnsi(setting.label, labelWidth);
+		const labelLines = wrapTextWithAnsi(labelText, labelWidth);
 		const firstLabelLine = labelLines[0] ?? "";
 		const gap = " ".repeat(
 			Math.max(1, labelWidth - visibleWidth(firstLabelLine) + 1)
@@ -331,7 +493,18 @@ export class AskSettingsList {
 				selected
 			);
 		}
-		return this.renderValue(this.getSettingValue(setting.key), selected);
+		return this.renderValue(this.getSettingDisplayValue(setting), selected);
+	}
+
+	private getSettingDisplayValue(
+		setting: PageSetting | ToggleSetting
+	): boolean | string {
+		if (setting.type === "toggle") {
+			return this.getSettingValue(setting.key);
+		}
+		const total = FOOTER_HINT_ROWS.length;
+		const shown = total - this.config.behaviour.hiddenFooterHints.length;
+		return `${shown}/${total} shown`;
 	}
 
 	private renderValue(value: boolean | string, selected: boolean): string {
@@ -365,6 +538,11 @@ export class AskSettingsList {
 			return;
 		}
 		this.resetConfirmUntil = 0;
+		if (setting.type === "page") {
+			this.page = setting.key;
+			this.tui.requestRender();
+			return;
+		}
 		this.saveSetting(setting.key, !this.getSettingValue(setting.key));
 		this.tui.requestRender();
 	}
@@ -440,6 +618,10 @@ export class AskSettingsList {
 		this.closed = true;
 		this.onClose();
 	}
+}
+
+function formatHintKey(label: string | undefined): string {
+	return label || "unbound";
 }
 
 function formatSettingValue(value: boolean | string): string {

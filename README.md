@@ -190,6 +190,8 @@ Press `h` to flag the active question for visual UI mockups without submitting i
 
 Press `Shift+H` to pause the whole form and request mockups for the current question immediately, then resume through `resume_ask_user` or `/ask:continue`. Only the served mockup flag is cleared; deferred `l` requests remain saved. The agent renders the existing options only, without extra designs. These shortcuts are configurable as `keymaps.main.requestUiVariations` and `keymaps.main.requestImmediateUiVariations`; use `[]` to disable. Both remain ordinary text in editors and have no effect on Review. HTML generation and browser opening depend on the agent's available tools, not a built-in HTML renderer.
 
+To shorten the footer, open `/ask-settings` → `Footer hints` and switch off the hints you don't need; the keys keep working. This is saved as `behaviour.hiddenFooterHints` (hints added in future versions stay visible until you hide them).
+
 Press `m` to collapse a long ask into a one-line summary so you can read the agent's message above it; press `m` again to expand. While minimized, only `m`, dismiss, and settings respond, and your answers, notes, and active tab are kept. `m` stays ordinary text in answer/note editors. Customize or disable it with `keymaps.main.toggleMinimize` (`["m"]` or `[]`).
 
 Fixed bindings:
@@ -223,6 +225,7 @@ You can edit the config file yourself, ask pi to edit it for you, or use `/ask-s
     "autoSubmitWhenAnsweredWithoutNotes": false,
     "confirmDismissWhenDirty": true,
     "doublePressReviewShortcuts": true,
+    "hiddenFooterHints": [],
     "presentSingleAsMulti": false,
     "showFooterHints": true
   },

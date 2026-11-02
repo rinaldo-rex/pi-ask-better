@@ -1,4 +1,7 @@
-import { normalizeConfiguredKeymaps } from "../constants/keymaps.ts";
+import {
+	normalizeConfiguredKeymaps,
+	normalizeHiddenFooterHints,
+} from "../constants/keymaps.ts";
 import { normalizeAskConfig } from "./defaults.ts";
 import {
 	AskConfigVersionMigrationError,
@@ -48,6 +51,9 @@ export function migrateAskConfig(raw: unknown): AskConfigMigrationResult {
 
 	const currentFile = migratedFile.config as AskConfigFileV6;
 	const config = normalizeAskConfig(currentFile);
+	const footerHintsNotice = getIgnoredFooterHintsNotice(
+		currentFile.behaviour?.hiddenFooterHints
+	);
 	const keymapsResult = normalizeConfiguredKeymaps(currentFile.keymaps);
 	if (!keymapsResult.ok) {
 		return {
@@ -56,7 +62,10 @@ export function migrateAskConfig(raw: unknown): AskConfigMigrationResult {
 				keymaps: normalizeAskConfig().keymaps,
 			},
 			migrated: migratedFile.migrated,
-			notice: `${keymapsResult.error} Using default ask keymaps for this session. Edit the config and restart pi or run /reload.`,
+			notice: joinNotices(
+				`${keymapsResult.error} Using default ask keymaps for this session. Edit the config and restart pi or run /reload.`,
+				footerHintsNotice
+			),
 		};
 	}
 
@@ -66,5 +75,18 @@ export function migrateAskConfig(raw: unknown): AskConfigMigrationResult {
 			keymaps: keymapsResult.keymaps,
 		},
 		migrated: migratedFile.migrated,
+		notice: footerHintsNotice,
 	};
+}
+
+function getIgnoredFooterHintsNotice(raw: unknown): string | undefined {
+	const { ignored } = normalizeHiddenFooterHints(raw);
+	if (ignored.length === 0) {
+		return;
+	}
+	return `Ignoring unknown or always-visible footer hints in behaviour.hiddenFooterHints: ${ignored.join(", ")}.`;
+}
+
+function joinNotices(...notices: (string | undefined)[]): string {
+	return notices.filter(Boolean).join(" ");
 }

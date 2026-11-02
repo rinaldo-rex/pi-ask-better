@@ -98,6 +98,7 @@ The codebase is split so the implementation reads through file boundaries and na
 - invalid persisted keymaps fall back to default keymaps for the current session without discarding valid behaviour, notification, or answer settings
 - invalid notification channels are skipped and fall back to the default bell channel if none are valid
 - ask settings behaviour and notification enabled changes attempt to persist immediately from the settings list; save failures revert the change and show an error; config reset is guarded by a short double-press confirmation
+- footer hint visibility is a config-backed hide list keyed by keymap binding ids; `HIDEABLE_FOOTER_HINTS` in `src/constants/keymaps.ts` is the catalog used by both footer rendering and the settings sub-page, and `global.settings` is never hideable
 - ask-widget minimization is controller-only UI state, never part of `AskState`, results, or pause checkpoints; while minimized, input routes through `getMinimizedInputCommand` (toggle, dismiss, settings only) and rendering through `renderMinimizedFrame`
 - `presentSingleAsMulti` is applied at ask-flow creation; toggling it does not rewrite already-normalized questions in an open flow
 - `main.changeQuestionType` changes the active question type live (non-preview: `single <-> multi`; preview: `preview <-> multi`) and may require confirmation before destructive multi-to-single conversion

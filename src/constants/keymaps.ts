@@ -184,18 +184,23 @@ const DESCRIPTIONS: Record<AskKeymapContext, Record<string, string>> = {
 	},
 };
 
+interface FooterHintEntry {
+	id: AskKeyBindingId;
+	text: string;
+}
+
 const footerHint = (
 	binding: AskKeyBinding,
 	action: string,
 	label = binding.label
-) => `${label} ${action}`;
+): FooterHintEntry => ({ id: binding.id, text: `${label} ${action}` });
 
 const footerKeyIdLabel = (binding: AskKeyBinding) => binding.keys.join(" / ");
 
 const optionalFooterHint = (
 	binding: AskKeyBinding,
 	action: string
-): string[] =>
+): FooterHintEntry[] =>
 	binding.keys.length
 		? [footerHint(binding, action, footerKeyIdLabel(binding))]
 		: [];
@@ -326,12 +331,77 @@ export function getAskKeymaps(config: AskConfig): {
 	};
 }
 
+export const ALWAYS_VISIBLE_FOOTER_HINT = "global.settings";
+
+/** Footer hints users can hide via `behaviour.hiddenFooterHints`, in footer order. */
+export const HIDEABLE_FOOTER_HINTS = [
+	{ id: "main.requestImmediateLaymanExplanation", label: "explain now" },
+	{ id: "main.requestImmediateUiVariations", label: "mockups now" },
+	{ id: "main.toggle", label: "toggle (multi-select)" },
+	{ id: "main.changeQuestionType", label: "question type" },
+	{
+		id: "main.requestLaymanExplanation",
+		label: "layman explanation / undo",
+	},
+	{ id: "main.requestUiVariations", label: "ui variations / undo" },
+	{ id: "main.confirm", label: "confirm / continue" },
+	{ id: "main.optionNote", label: "notes" },
+	{ id: "main.toggleMinimize", label: "minimize" },
+	{ id: "main.cancel", label: "dismiss / cancel" },
+	{ id: "numberShortcut", label: "hotkeys (Review)" },
+	{ id: "editor.submit", label: "submit (answer editor)" },
+	{ id: "editor.close", label: "close (answer editor)" },
+	{ id: "noteEditor.save", label: "save (note editor)" },
+	{ id: "noteEditor.close", label: "close (note editor)" },
+] as const satisfies readonly { id: AskKeyBindingId; label: string }[];
+
+export type FooterHintId = (typeof HIDEABLE_FOOTER_HINTS)[number]["id"];
+
+const HIDEABLE_FOOTER_HINT_IDS = new Set<string>(
+	HIDEABLE_FOOTER_HINTS.map((hint) => hint.id)
+);
+
+export function normalizeHiddenFooterHints(raw: unknown): {
+	hidden: FooterHintId[];
+	ignored: string[];
+} {
+	if (!Array.isArray(raw)) {
+		return { hidden: [], ignored: [] };
+	}
+	const hidden: FooterHintId[] = [];
+	const ignored: string[] = [];
+	for (const value of raw) {
+		if (typeof value !== "string") {
+			continue;
+		}
+		if (!HIDEABLE_FOOTER_HINT_IDS.has(value)) {
+			ignored.push(value);
+			continue;
+		}
+		if (!hidden.includes(value as FooterHintId)) {
+			hidden.push(value as FooterHintId);
+		}
+	}
+	return { hidden, ignored };
+}
+
+function joinVisibleFooterHints(
+	config: AskConfig,
+	hints: readonly FooterHintEntry[]
+): string {
+	const hidden = new Set<string>(config.behaviour.hiddenFooterHints);
+	return hints
+		.filter((hint) => !hidden.has(hint.id))
+		.map((hint) => hint.text)
+		.join(" · ");
+}
+
 export function renderFooterKeymaps(
 	config: AskConfig,
 	context: FooterKeymapContext
 ): string {
 	const global = getGlobalBindings(config);
-	let hints: string[];
+	let hints: FooterHintEntry[];
 	if (context === "input" || context === "note") {
 		const editor = getAskContextBindings(config, "editor");
 		const noteEditor = getAskContextBindings(config, "noteEditor");
@@ -358,13 +428,14 @@ export function renderFooterKeymaps(
 	} else {
 		hints = getQuestionFooterHints(config, context);
 	}
-	return ` ${hints.join(" · ")}`;
+	const visible = joinVisibleFooterHints(config, hints);
+	return visible ? ` ${visible}` : "";
 }
 
 function getQuestionFooterHints(
 	config: AskConfig,
 	context: FooterKeymapContext
-): string[] {
+): FooterHintEntry[] {
 	const main = getAskContextBindings(config, "main");
 	const global = getGlobalBindings(config);
 	const immediate = [
@@ -411,12 +482,17 @@ function getQuestionFooterHints(
 
 export function renderMinimizedKeymapHint(config: AskConfig): string {
 	const main = getAskContextBindings(config, "main");
-	return optionalFooterHint(main.toggleMinimize, "expand").join("");
+	return optionalFooterHint(main.toggleMinimize, "expand")
+		.map((hint) => hint.text)
+		.join("");
 }
 
-export function renderSettingsFooterKeymaps(config: AskConfig): string {
+export function renderSettingsFooterKeymaps(
+	config: AskConfig,
+	closeAction = "close"
+): string {
 	const bindings = getAskContextBindings(config, "settingsModal");
-	return `${bindings.toggle.label} to change · ${bindings.close.label} to close`;
+	return `${bindings.toggle.label} to change · ${bindings.close.label} to ${closeAction}`;
 }
 
 export function normalizeConfiguredKeymaps(

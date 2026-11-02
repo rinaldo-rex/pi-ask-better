@@ -14,6 +14,7 @@ const savedConfig: AskConfig = {
 		autoSubmitWhenAnsweredWithoutNotes: false,
 		confirmDismissWhenDirty: true,
 		doublePressReviewShortcuts: true,
+		hiddenFooterHints: [],
 		presentSingleAsMulti: false,
 		showFooterHints: true,
 	},

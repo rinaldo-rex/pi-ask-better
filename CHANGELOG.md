@@ -1,3 +1,9 @@
+# Unreleased
+
+### Features
+
+* Choose which footer shortcut hints are visible from `/ask-settings` → `Footer hints`, saved as `behaviour.hiddenFooterHints`; hidden hints keep working and new hints stay visible by default ([#9](https://github.com/rinaldo-rex/pi-ask-better/issues/9)).
+
 # 1.5.0 (2026-11-02)
 
 ### Features

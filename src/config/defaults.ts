@@ -1,6 +1,7 @@
 import {
 	DEFAULT_ASK_KEYMAPS,
 	normalizeConfiguredKeymaps,
+	normalizeHiddenFooterHints,
 } from "../constants/keymaps.ts";
 import type {
 	AskConfig,
@@ -27,6 +28,7 @@ export const DEFAULT_ASK_CONFIG: AskConfig = {
 		autoSubmitWhenAnsweredWithoutNotes: false,
 		confirmDismissWhenDirty: true,
 		doublePressReviewShortcuts: true,
+		hiddenFooterHints: [],
 		presentSingleAsMulti: false,
 		showFooterHints: true,
 	},
@@ -66,6 +68,9 @@ export function normalizeAskConfig(
 			doublePressReviewShortcuts:
 				config?.behaviour?.doublePressReviewShortcuts ??
 				DEFAULT_ASK_CONFIG.behaviour.doublePressReviewShortcuts,
+			hiddenFooterHints: normalizeHiddenFooterHints(
+				config?.behaviour?.hiddenFooterHints
+			).hidden,
 			showFooterHints:
 				config?.behaviour?.showFooterHints ??
 				DEFAULT_ASK_CONFIG.behaviour.showFooterHints,
@@ -98,6 +103,7 @@ export function toAskConfigFileV6(config: AskConfig): AskConfigFileV6 {
 			confirmDismissWhenDirty: normalized.behaviour.confirmDismissWhenDirty,
 			doublePressReviewShortcuts:
 				normalized.behaviour.doublePressReviewShortcuts,
+			hiddenFooterHints: [...normalized.behaviour.hiddenFooterHints],
 			presentSingleAsMulti: normalized.behaviour.presentSingleAsMulti,
 			showFooterHints: normalized.behaviour.showFooterHints,
 		},

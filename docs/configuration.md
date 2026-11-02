@@ -44,6 +44,7 @@ Unsupported future versions or invalid files are left unchanged and defaults are
     "autoSubmitWhenAnsweredWithoutNotes": false,
     "confirmDismissWhenDirty": true,
     "doublePressReviewShortcuts": true,
+    "hiddenFooterHints": [],
     "presentSingleAsMulti": false,
     "showFooterHints": true
   },
@@ -162,6 +163,27 @@ pi auth check --provider openai-codex --model gpt-5.4-mini
 - type: boolean
 - default: `true`
 - effect: when disabled, the ask flow hides the footer keymap hints
+
+### `behaviour.hiddenFooterHints`
+
+- type: array of footer hint ids
+- default: `[]` (every hint shown)
+- effect: hides individual footer hints while keeping their keys working; hints added by future versions stay visible unless you hide them too
+- settings UI: `/ask-settings` → `Footer hints` opens a page that toggles each hint and saves immediately
+- always visible: the `global.settings` hint (`?`) cannot be hidden, and the minimized widget always shows its expand hint
+- ids: `main.requestImmediateLaymanExplanation` (explain now), `main.requestImmediateUiVariations` (mockups now), `main.toggle` (multi-select toggle), `main.changeQuestionType`, `main.requestLaymanExplanation` (layman explanation and its undo hint), `main.requestUiVariations` (ui variations and its undo hint), `main.confirm` (confirm/continue), `main.optionNote` (notes), `main.toggleMinimize`, `main.cancel` (dismiss/cancel), `numberShortcut` (Review hotkeys), `editor.submit`, `editor.close`, `noteEditor.save`, `noteEditor.close`
+- invalid values: unknown ids and `global.settings` are ignored with a load notice; the rest of the config still applies
+
+```json
+"behaviour": {
+  "hiddenFooterHints": [
+    "main.requestLaymanExplanation",
+    "main.requestUiVariations"
+  ]
+}
+```
+
+This is an additive schema-version-6 field: configs without it load with every hint shown, without rewriting the file.
 
 ## Notifications
 
@@ -379,6 +401,7 @@ Invalid keymaps include:
     "autoSubmitWhenAnsweredWithoutNotes": true,
     "confirmDismissWhenDirty": true,
     "doublePressReviewShortcuts": true,
+    "hiddenFooterHints": [],
     "presentSingleAsMulti": false,
     "showFooterHints": false
   },

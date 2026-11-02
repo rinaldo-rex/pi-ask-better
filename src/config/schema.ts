@@ -146,7 +146,12 @@ const AskConfigKeymapsSchema = Type.Object({
 export const AskConfigFileV6Schema = Type.Object({
 	schemaVersion: Type.Literal(6),
 	answer: AskConfigFileV5Schema.properties.answer,
-	behaviour: AskConfigFileV5Schema.properties.behaviour,
+	behaviour: Type.Optional(
+		Type.Object({
+			...AskConfigFileV5Schema.properties.behaviour.properties,
+			hiddenFooterHints: Type.Optional(Type.Array(Type.String())),
+		})
+	),
 	keymaps: Type.Optional(AskConfigKeymapsSchema),
 	notifications: AskConfigFileV5Schema.properties.notifications,
 });
@@ -300,6 +305,7 @@ export interface AskConfig {
 		autoSubmitWhenAnsweredWithoutNotes: boolean;
 		confirmDismissWhenDirty: boolean;
 		doublePressReviewShortcuts: boolean;
+		hiddenFooterHints: string[];
 		presentSingleAsMulti: boolean;
 		showFooterHints: boolean;
 	};
