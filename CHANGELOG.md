@@ -1,8 +1,13 @@
-# Unreleased
+# 1.5.0 (2026-11-02)
 
 ### Features
 
 * Minimize the ask widget to a one-line summary with `m` (configurable as `keymaps.main.toggleMinimize`) so long questions no longer hide the conversation above them ([#8](https://github.com/rinaldo-rex/pi-ask-better/issues/8)).
+
+### Maintenance
+
+* Develop and test against pi 1.4.0 instead of 0.84.1; the question `type` schema now uses TypeBox directly and emits the same JSON Schema.
+* Move pnpm overrides and build-script settings to `pnpm-workspace.yaml` so pnpm 11+ can run project scripts again; pnpm 10 (CI) remains supported.
 
 # 1.4.0 (2026-10-08)
 
